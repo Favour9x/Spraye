@@ -17,16 +17,15 @@ export function CreateJobForm() {
   const { createJob, status, txHash, error } = useCreateJob();
   const { count, refetch } = useJobCount();
 
-  // Navigate to new job after success
+  // Navigate to jobs list after success (don't try to navigate to specific job immediately)
   useEffect(() => {
-    if (status === 'success' && count !== undefined) {
-      // Refetch count to get the new job ID
-      refetch().then(() => {
-        // The new job ID is count (since IDs start at 0)
-        router.push(`/jobs/${count.toString()}`);
-      });
+    if (status === 'success') {
+      // Wait a bit for the transaction to be mined, then redirect to jobs list
+      setTimeout(() => {
+        router.push('/jobs');
+      }, 2000);
     }
-  }, [status, count, refetch, router]);
+  }, [status, router]);
 
   const validate = (): boolean => {
     const newErrors: { amount?: string; description?: string; skills?: string } = {};
@@ -153,7 +152,7 @@ export function CreateJobForm() {
         {status === 'approving' && 'Approving USDC...'}
         {status === 'pending' && 'Creating job...'}
         {status === 'idle' && 'Post Job'}
-        {status === 'success' && 'Redirecting...'}
+        {status === 'success' && 'Success! Redirecting...'}
         {status === 'error' && 'Try Again'}
       </button>
 

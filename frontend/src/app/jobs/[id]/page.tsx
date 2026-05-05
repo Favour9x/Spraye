@@ -43,8 +43,16 @@ export default function JobDetailPage() {
           </div>
         ) : error ? (
           <div className="bg-red-900/20 border border-red-800 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-red-400 mb-2">Error loading job</h3>
-            <p className="text-sm text-red-300">{error.message}</p>
+            <h3 className="text-lg font-semibold text-red-400 mb-2">Job Not Found</h3>
+            <p className="text-sm text-red-300 mb-4">
+              This job doesn't exist or hasn't been created yet.
+            </p>
+            <Link
+              href="/jobs"
+              className="inline-flex items-center px-4 py-2 bg-[#0052FF] text-white rounded-lg hover:bg-[#0046DD] transition-colors text-sm"
+            >
+              Browse Available Jobs
+            </Link>
           </div>
         ) : job ? (
           <JobDetail job={job} onRefresh={refetch} />
