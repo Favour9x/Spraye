@@ -6,12 +6,30 @@ import { useJob } from '@/lib/hooks/useJob';
 import { useResolveDispute } from '@/lib/hooks/useResolveDispute';
 import { formatAddress, formatUsdc } from '@/lib/utils';
 import { ARBITRATOR_ADDRESS } from '@/constants';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
 
 export default function ArbitratorPage() {
+  const [mounted, setMounted] = useState(false);
   const { address, isConnected } = useAccount();
   const { count } = useJobCount();
   const isArbitrator = address?.toLowerCase() === ARBITRATOR_ADDRESS.toLowerCase();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center p-4">
+        <div className="text-center">
+          <p className="text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isConnected) {
     return (
