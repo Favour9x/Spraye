@@ -22,6 +22,14 @@ export function useCreateJob() {
         return;
       }
 
+      // Debug logging
+      console.log('🚀 Creating job with:');
+      console.log('  Amount:', amount.toString());
+      console.log('  Description:', description);
+      console.log('  Skills:', requiredSkills);
+      console.log('  USDC Contract:', USDC_CONTRACT.address);
+      console.log('  Escrow Contract:', ESCROW_CONTRACT.address);
+
       try {
         setStatus('checking');
         setError(null);

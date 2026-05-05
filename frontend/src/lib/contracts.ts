@@ -1,5 +1,12 @@
 import { FREELANCER_ESCROW_ADDRESS, USDC_ADDRESS } from '@/constants';
 
+// Debug logging
+if (typeof window !== 'undefined') {
+  console.log('📝 Contract Addresses Loaded:');
+  console.log('  FREELANCER_ESCROW_ADDRESS:', FREELANCER_ESCROW_ADDRESS);
+  console.log('  USDC_ADDRESS:', USDC_ADDRESS);
+}
+
 // FreelancerMarketplace ABI (generated from Solidity contract)
 export const ESCROW_ABI = [
   {
