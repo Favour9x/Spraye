@@ -29,6 +29,7 @@ export function useCreateJob() {
       console.log('  Skills:', requiredSkills);
       console.log('  USDC Contract:', USDC_CONTRACT.address);
       console.log('  Escrow Contract:', ESCROW_CONTRACT.address);
+      console.log('  User Address:', address);
 
       try {
         setStatus('checking');
@@ -39,46 +40,59 @@ export function useCreateJob() {
         // Step 1: Approve USDC
         console.log('📝 Step 1: Approving USDC...');
         setStatus('approving');
-        const approveTxHash = await writeContractAsync({
-          ...USDC_CONTRACT,
-          functionName: 'approve',
-          args: [ESCROW_CONTRACT.address, amount],
-        });
         
-        console.log('✅ Approval transaction sent:', approveTxHash);
+        let approveTxHash;
+        try {
+          approveTxHash = await writeContractAsync({
+            ...USDC_CONTRACT,
+            functionName: 'approve',
+            args: [ESCROW_CONTRACT.address, amount],
+          });
+          console.log('✅ Approval transaction sent:', approveTxHash);
+        } catch (approveError) {
+          console.error('❌ Approval failed:', approveError);
+          throw approveError;
+        }
+        
         console.log('⏳ Waiting for approval confirmation...');
         setStatus('waiting-approval');
         
-        // Wait for approval to be mined (using a simple delay since we can't use the hook here)
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        // Wait for approval to be mined
+        await new Promise(resolve => setTimeout(resolve, 5000));
         
         console.log('✅ Approval confirmed!');
 
         // Step 2: Create job
         console.log('📝 Step 2: Creating job...');
         setStatus('pending');
-        const createTxHash = await writeContractAsync({
-          ...ESCROW_CONTRACT,
-          functionName: 'createJob',
-          args: [amount, description, requiredSkills],
-        });
+        
+        let createTxHash;
+        try {
+          createTxHash = await writeContractAsync({
+            ...ESCROW_CONTRACT,
+            functionName: 'createJob',
+            args: [amount, description, requiredSkills],
+          });
+          console.log('✅ Job creation transaction sent:', createTxHash);
+        } catch (createError) {
+          console.error('❌ Job creation failed:', createError);
+          throw createError;
+        }
 
-        console.log('✅ Job creation transaction sent:', createTxHash);
         console.log('⏳ Waiting for job creation confirmation...');
         setStatus('waiting-creation');
         
         // Wait for job creation to be mined
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise(resolve => setTimeout(resolve, 5000));
         
         console.log('✅ Job created successfully!');
         setTxHash(createTxHash);
         setStatus('success');
 
-        // Note: jobId extraction from events would require decoding logs
-        // For simplicity, we'll let the UI refetch the job count to get the new job ID
       } catch (err) {
-        console.error('❌ Error:', err);
+        console.error('❌ Error in createJob:', err);
         const parsedError = parseContractError(err);
+        console.error('❌ Parsed error:', parsedError);
         if (parsedError === 'CANCELLED') {
           setStatus('idle');
         } else {
