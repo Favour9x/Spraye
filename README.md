@@ -1,4 +1,4 @@
-# Freelancer Escrow on Arc Testnet
+# ArcHire on Arc Testnet
 
 A trustless freelance escrow application built on Arc Testnet with USDC custody and ERC-8004 reputation integration.
 
