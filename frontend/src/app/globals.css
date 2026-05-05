@@ -12,7 +12,7 @@
   --background: #FFFFFF;
   --foreground: #0A0A0A;
   --primary: #0052FF;
-  --card-bg: #F5F5F5;
+  --card-bg: #FFFFFF;
   --border: #E5E5E5;
 }
 
@@ -34,39 +34,51 @@ body {
 }
 
 /* Light mode utility classes */
+.light .bg-\[\#0A0A0A\] {
+  background-color: #FFFFFF !important;
+}
+
 .light .bg-black {
-  background-color: #FFFFFF;
+  background-color: #FFFFFF !important;
 }
 
 .light .bg-gray-900 {
-  background-color: #F5F5F5;
+  background-color: #FAFAFA !important;
 }
 
 .light .text-white {
-  color: #0A0A0A;
+  color: #0A0A0A !important;
 }
 
 .light .text-gray-400 {
-  color: #666666;
+  color: #666666 !important;
 }
 
 .light .text-gray-500 {
-  color: #737373;
+  color: #737373 !important;
+}
+
+.light .text-gray-300 {
+  color: #525252 !important;
 }
 
 .light .border-gray-800 {
-  border-color: #E5E5E5;
+  border-color: #E5E5E5 !important;
 }
 
 .light .border-gray-700 {
-  border-color: #D4D4D4;
+  border-color: #D4D4D4 !important;
 }
 
 .light .hover\:bg-gray-900:hover {
-  background-color: #F5F5F5;
+  background-color: #F5F5F5 !important;
 }
 
 .light .hover\:bg-gray-800:hover {
-  background-color: #E5E5E5;
+  background-color: #E5E5E5 !important;
+}
+
+.light .hover\:border-\[\#0052FF\]\/50:hover {
+  border-color: rgba(0, 82, 255, 0.5) !important;
 }
 

@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ConnectButton } from '@/components/ConnectButton';
 import { NetworkGuard } from '@/components/NetworkGuard';
 import { UsdcBalance } from '@/components/UsdcBalance';
 import { JobDetail } from '@/components/JobDetail';
@@ -17,24 +16,6 @@ export default function JobDetailPage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#0A0A0A]">
       <NetworkGuard />
-      
-      {/* Header */}
-      <header className="bg-black border-b border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Link href="/jobs" className="text-2xl font-bold text-white hover:text-gray-300">
-                ArcHire
-              </Link>
-              <p className="text-sm text-gray-400 mt-1">Trustless Freelancing on Arc</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <UsdcBalance />
-              <ConnectButton />
-            </div>
-          </div>
-        </div>
-      </header>
 
       {/* Main Content */}
       <main className="flex-1 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
