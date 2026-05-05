@@ -150,7 +150,9 @@ export function CreateJobForm() {
       >
         {status === 'checking' && 'Checking allowance...'}
         {status === 'approving' && 'Approving USDC...'}
+        {status === 'waiting-approval' && 'Waiting for approval confirmation...'}
         {status === 'pending' && 'Creating job...'}
+        {status === 'waiting-creation' && 'Waiting for job creation...'}
         {status === 'idle' && 'Post Job'}
         {status === 'success' && 'Success! Redirecting...'}
         {status === 'error' && 'Try Again'}
