@@ -193,9 +193,9 @@ function JobCard({ job }: { job: any }) {
         </div>
         <div className="ml-6 text-right">
           <p className="text-2xl font-bold text-white">{formatUsdc(job.amount)}</p>
-          {job.applicationCount > 0n && (
+          {job.applicationCount > BigInt(0) && (
             <p className="text-sm text-gray-400 mt-1">
-              {job.applicationCount.toString()} {job.applicationCount === 1n ? 'application' : 'applications'}
+              {job.applicationCount.toString()} {job.applicationCount === BigInt(1) ? 'application' : 'applications'}
             </p>
           )}
         </div>

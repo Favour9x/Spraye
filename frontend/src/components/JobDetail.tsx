@@ -100,7 +100,7 @@ export function JobDetail({ job, onRefresh }: JobDetailProps) {
         {stateLabel === 'OPEN' && (
           <div className="mt-4 pt-4 border-t border-gray-200">
             <span className="text-sm text-gray-500">
-              {job.applicationCount.toString()} {job.applicationCount === 1n ? 'application' : 'applications'}
+              {job.applicationCount.toString()} {job.applicationCount === BigInt(1) ? 'application' : 'applications'}
             </span>
           </div>
         )}
