@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useWriteContract, usePublicClient } from 'wagmi';
 import { ESCROW_CONTRACT, USDC_CONTRACT } from '../contracts';
 import { parseContractError } from '../utils';
 
@@ -7,6 +7,7 @@ type Status = 'idle' | 'checking' | 'approving' | 'waiting-approval' | 'pending'
 
 export function useCreateJob() {
   const { address } = useAccount();
+  const publicClient = usePublicClient();
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
@@ -18,6 +19,12 @@ export function useCreateJob() {
     async (amount: bigint, description: string, requiredSkills: string[]) => {
       if (!address) {
         setError('Wallet not connected');
+        setStatus('error');
+        return;
+      }
+
+      if (!publicClient) {
+        setError('Network not connected');
         setStatus('error');
         return;
       }
@@ -57,10 +64,13 @@ export function useCreateJob() {
         console.log('⏳ Waiting for approval confirmation...');
         setStatus('waiting-approval');
         
-        // Wait for approval to be mined
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        // Wait for approval transaction receipt
+        const approvalReceipt = await publicClient.waitForTransactionReceipt({
+          hash: approveTxHash,
+          confirmations: 1,
+        });
         
-        console.log('✅ Approval confirmed!');
+        console.log('✅ Approval confirmed! Block:', approvalReceipt.blockNumber);
 
         // Step 2: Create job
         console.log('📝 Step 2: Creating job...');
@@ -82,10 +92,15 @@ export function useCreateJob() {
         console.log('⏳ Waiting for job creation confirmation...');
         setStatus('waiting-creation');
         
-        // Wait for job creation to be mined
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        // Wait for job creation transaction receipt
+        const creationReceipt = await publicClient.waitForTransactionReceipt({
+          hash: createTxHash,
+          confirmations: 1,
+        });
         
-        console.log('✅ Job created successfully!');
+        console.log('✅ Job created successfully! Block:', creationReceipt.blockNumber);
+        console.log('📋 Transaction receipt:', creationReceipt);
+        
         setTxHash(createTxHash);
         setStatus('success');
 
@@ -101,7 +116,7 @@ export function useCreateJob() {
         }
       }
     },
-    [address, writeContractAsync]
+    [address, publicClient, writeContractAsync]
   );
 
   return {

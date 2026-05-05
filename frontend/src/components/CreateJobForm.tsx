@@ -20,12 +20,13 @@ export function CreateJobForm() {
   // Navigate to jobs list after success and force refresh
   useEffect(() => {
     if (status === 'success') {
-      // Wait a bit for the transaction to be mined, then redirect to jobs list
+      console.log('✅ Job creation successful, waiting before redirect...');
+      // Wait longer for blockchain state to propagate, then redirect to jobs list
       setTimeout(() => {
-        router.push('/jobs');
-        // Force a page reload to ensure fresh data
+        console.log('🔄 Redirecting to jobs page...');
+        // Force a full page reload to ensure fresh data from blockchain
         window.location.href = '/jobs';
-      }, 2000);
+      }, 3000);
     }
   }, [status, router]);
 

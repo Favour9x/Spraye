@@ -7,6 +7,8 @@ import { useJobCount } from '@/lib/hooks/useJobCount';
 import { useJob } from '@/lib/hooks/useJob';
 import { useFreelancerProfile } from '@/lib/hooks/useFreelancerProfile';
 import { JobCard } from '@/components/JobCard';
+import { ESCROW_CONTRACT } from '@/lib/contracts';
+import { EXPLORER_URL } from '@/constants';
 
 export default function JobsPage() {
   const { count, isLoading, refetch } = useJobCount(true);
@@ -15,7 +17,15 @@ export default function JobsPage() {
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [showOnlyOpen, setShowOnlyOpen] = useState(true);
 
+  // Debug logging
+  console.log('📊 Jobs Page Debug:');
+  console.log('  Job Count:', count?.toString());
+  console.log('  Is Loading:', isLoading);
+  console.log('  Contract Address:', ESCROW_CONTRACT.address);
+  console.log('  Block Explorer:', `https://testnet.arcscan.network/address/${ESCROW_CONTRACT.address}`);
+
   const handleRefresh = () => {
+    console.log('🔄 Manual refresh triggered');
     refetch();
     window.location.reload();
   };
@@ -51,6 +61,14 @@ export default function JobsPage() {
             {count !== undefined && (
               <p className="text-gray-400">{count.toString()} total jobs</p>
             )}
+            <a
+              href={`${EXPLORER_URL}/address/${ESCROW_CONTRACT.address}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-[#0052FF] hover:text-[#0046DD] mt-1 inline-block"
+            >
+              View contract on explorer →
+            </a>
           </div>
           <div className="flex gap-3">
             <button
