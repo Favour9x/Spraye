@@ -17,12 +17,14 @@ export function CreateJobForm() {
   const { createJob, status, txHash, error } = useCreateJob();
   const { count, refetch } = useJobCount();
 
-  // Navigate to jobs list after success (don't try to navigate to specific job immediately)
+  // Navigate to jobs list after success and force refresh
   useEffect(() => {
     if (status === 'success') {
       // Wait a bit for the transaction to be mined, then redirect to jobs list
       setTimeout(() => {
         router.push('/jobs');
+        // Force a page reload to ensure fresh data
+        window.location.href = '/jobs';
       }, 2000);
     }
   }, [status, router]);
