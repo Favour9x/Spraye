@@ -66,7 +66,7 @@ export function CreateJobForm() {
     await createJob(amountInWei, description, skillsArray);
   };
 
-  const isDisabled = status === 'checking' || status === 'approving' || status === 'pending';
+  const isDisabled = status === 'checking' || status === 'approving' || status === 'waiting-approval' || status === 'pending' || status === 'waiting-creation';
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">

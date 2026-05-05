@@ -3,7 +3,7 @@
 import { EXPLORER_URL } from '@/constants';
 
 interface TxNotificationProps {
-  status: 'idle' | 'pending' | 'success' | 'error' | 'approving' | 'checking';
+  status: 'idle' | 'checking' | 'approving' | 'waiting-approval' | 'pending' | 'waiting-creation' | 'success' | 'error';
   txHash?: `0x${string}` | null;
   error?: string | null;
 }
@@ -33,13 +33,47 @@ export function TxNotification({ status, txHash, error }: TxNotificationProps) {
     );
   }
 
+  if (status === 'waiting-approval') {
+    return (
+      <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex items-center gap-3">
+          <div className="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full" />
+          <span className="text-sm text-blue-800">Waiting for approval confirmation...</span>
+        </div>
+      </div>
+    );
+  }
+
   if (status === 'pending') {
     return (
       <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <div className="flex items-center gap-3">
           <div className="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full" />
           <div className="flex-1">
-            <p className="text-sm text-blue-800 font-medium">Transaction pending...</p>
+            <p className="text-sm text-blue-800 font-medium">Creating job... Confirm in your wallet</p>
+            {txHash && (
+              <a
+                href={`${EXPLORER_URL}/tx/${txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-600 hover:underline"
+              >
+                View on Explorer →
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'waiting-creation') {
+    return (
+      <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex items-center gap-3">
+          <div className="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full" />
+          <div className="flex-1">
+            <p className="text-sm text-blue-800 font-medium">Waiting for job creation confirmation...</p>
             {txHash && (
               <a
                 href={`${EXPLORER_URL}/tx/${txHash}`}
