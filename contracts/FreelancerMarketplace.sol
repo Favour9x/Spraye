@@ -175,7 +175,7 @@ contract FreelancerMarketplace {
     function createJob(
         uint256 amount,
         string calldata description,
-        string[] calldata requiredSkills
+        string[] memory requiredSkills
     ) external returns (uint256 jobId) {
         if (amount == 0) revert ZeroAmount();
         
@@ -203,12 +203,7 @@ contract FreelancerMarketplace {
         job.amount = amount;
         job.state = JobState.OPEN;
         job.description = description;
-        
-        // Copy skills array manually to avoid old codegen issue
-        for (uint256 i = 0; i < requiredSkills.length; i++) {
-            job.requiredSkills.push(requiredSkills[i]);
-        }
-        
+        job.requiredSkills = requiredSkills;
         job.deliverable = "";
         job.applicationCount = 0;
 
