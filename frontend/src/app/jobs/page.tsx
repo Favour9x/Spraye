@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useAccount } from 'wagmi';
 import { useJobCount } from '@/lib/hooks/useJobCount';
@@ -14,9 +14,7 @@ export default function JobsPage() {
   const { count, isLoading, refetch } = useJobCount(true);
   const { address } = useAccount();
   const { profile } = useFreelancerProfile(address);
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [showOnlyOpen, setShowOnlyOpen] = useState(true);
-  const [allSkills, setAllSkills] = useState<Set<string>>(new Set());
 
   // Debug logging
   console.log('📊 Jobs Page Debug:');
@@ -30,26 +28,6 @@ export default function JobsPage() {
     refetch();
     window.location.reload();
   };
-
-  const toggleSkill = (skill: string) => {
-    setSelectedSkills(prev =>
-      prev.includes(skill)
-        ? prev.filter(s => s !== skill)
-        : [...prev, skill]
-    );
-  };
-
-  const loadMySkills = () => {
-    setSelectedSkills(profile.skills);
-  };
-
-  const handleSkillsUpdate = useCallback((skills: string[]) => {
-    setAllSkills(prev => {
-      const newSkills = new Set(prev);
-      skills.forEach(skill => newSkills.add(skill));
-      return newSkills;
-    });
-  }, []);
 
   return (
     <div className="min-h-screen py-8">
@@ -91,20 +69,10 @@ export default function JobsPage() {
 
         {/* Filters */}
         <div className="glass-card glass-hover rounded-lg p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white">Filters</h3>
-            {profile.skills.length > 0 && (
-              <button
-                onClick={loadMySkills}
-                className="text-[#0052FF] hover:text-[#0046DD] text-sm font-medium"
-              >
-                Load My Skills
-              </button>
-            )}
-          </div>
+          <h3 className="text-lg font-semibold text-white mb-4">Filters</h3>
 
           {/* Status Filter */}
-          <div className="mb-4">
+          <div>
             <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
               <input
                 type="checkbox"
@@ -115,36 +83,6 @@ export default function JobsPage() {
               Show only open jobs
             </label>
           </div>
-
-          {/* Skills Filter */}
-          {allSkills.size > 0 && (
-            <div>
-              <h4 className="text-sm font-medium text-gray-400 mb-2">Filter by Skills</h4>
-              <div className="flex flex-wrap gap-2">
-                {Array.from(allSkills).map((skill) => (
-                  <button
-                    key={skill}
-                    onClick={() => toggleSkill(skill)}
-                    className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-                      selectedSkills.includes(skill)
-                        ? 'bg-[#0052FF] text-white border-[#0052FF]'
-                        : 'bg-[#0052FF]/20 text-[#0052FF] border-[#0052FF]/30 hover:bg-[#0052FF]/30'
-                    }`}
-                  >
-                    {skill}
-                  </button>
-                ))}
-              </div>
-              {selectedSkills.length > 0 && (
-                <button
-                  onClick={() => setSelectedSkills([])}
-                  className="mt-3 text-sm text-gray-400 hover:text-white"
-                >
-                  Clear filters
-                </button>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Job List */}
@@ -190,9 +128,7 @@ export default function JobsPage() {
         ) : count !== undefined ? (
           <JobList
             count={count}
-            selectedSkills={selectedSkills}
             showOnlyOpen={showOnlyOpen}
-            onSkillsUpdate={handleSkillsUpdate}
           />
         ) : null}
       </div>
@@ -202,14 +138,10 @@ export default function JobsPage() {
 
 function JobList({
   count,
-  selectedSkills,
   showOnlyOpen,
-  onSkillsUpdate,
 }: {
   count: bigint;
-  selectedSkills: string[];
   showOnlyOpen: boolean;
-  onSkillsUpdate: (skills: string[]) => void;
 }) {
   const jobIds = Array.from({ length: Number(count) }, (_, i) => BigInt(i));
 
@@ -219,9 +151,7 @@ function JobList({
         <JobListItem
           key={jobId.toString()}
           jobId={jobId}
-          selectedSkills={selectedSkills}
           showOnlyOpen={showOnlyOpen}
-          onSkillsUpdate={onSkillsUpdate}
         />
       ))}
     </div>
@@ -230,23 +160,12 @@ function JobList({
 
 function JobListItem({
   jobId,
-  selectedSkills,
   showOnlyOpen,
-  onSkillsUpdate,
 }: {
   jobId: bigint;
-  selectedSkills: string[];
   showOnlyOpen: boolean;
-  onSkillsUpdate: (skills: string[]) => void;
 }) {
   const { job, isLoading } = useJob(jobId);
-
-  // Update skills when job loads (using useEffect to avoid render loop)
-  useEffect(() => {
-    if (job && job.requiredSkills.length > 0) {
-      onSkillsUpdate(job.requiredSkills);
-    }
-  }, [job, onSkillsUpdate]);
 
   if (isLoading || !job) {
     return null;
@@ -255,16 +174,6 @@ function JobListItem({
   // Filter by status
   if (showOnlyOpen && job.state !== 0) {
     return null;
-  }
-
-  // Filter by skills
-  if (selectedSkills.length > 0) {
-    const hasMatchingSkill = job.requiredSkills.some(skill =>
-      selectedSkills.includes(skill)
-    );
-    if (!hasMatchingSkill) {
-      return null;
-    }
   }
 
   return <JobCard job={job} />;
