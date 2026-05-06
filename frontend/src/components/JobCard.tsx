@@ -19,7 +19,7 @@ export function JobCard({ job }: JobCardProps) {
   return (
     <Link
       href={`/jobs/${job.id}`}
-      className="block p-6 bg-black border border-[#0052FF] rounded-lg hover:border-[#0046DD] hover:shadow-lg hover:shadow-[#0052FF]/20 transition-all"
+      className="block p-6 glass-card glass-hover rounded-lg transition-all"
     >
       <div className="flex items-start justify-between mb-3">
         <div>

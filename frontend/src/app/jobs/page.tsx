@@ -52,7 +52,7 @@ export default function JobsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] py-8">
+    <div className="min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -90,7 +90,7 @@ export default function JobsPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-black border border-gray-800 rounded-lg p-6 mb-6">
+        <div className="glass-card glass-hover rounded-lg p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white">Filters</h3>
             {profile.skills.length > 0 && (
@@ -162,7 +162,7 @@ export default function JobsPage() {
             ))}
           </div>
         ) : count === BigInt(0) ? (
-          <div className="text-center py-12 bg-black border border-gray-800 rounded-lg">
+          <div className="text-center py-12 glass-card rounded-lg">
             <svg
               className="mx-auto h-12 w-12 text-gray-600"
               fill="none"
