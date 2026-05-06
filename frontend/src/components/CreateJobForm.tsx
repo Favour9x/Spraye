@@ -24,9 +24,19 @@ export function CreateJobForm() {
       // Wait longer for blockchain state to propagate, then redirect to jobs list
       setTimeout(() => {
         console.log('🔄 Redirecting to jobs page...');
-        // Force a full page reload to ensure fresh data from blockchain
-        window.location.href = '/jobs';
-      }, 3000);
+        try {
+          // Use Next.js router for client-side navigation
+          router.push('/jobs');
+          // Force a refresh after navigation
+          setTimeout(() => {
+            router.refresh();
+          }, 500);
+        } catch (error) {
+          console.error('❌ Navigation error:', error);
+          // Fallback to full page reload if router fails
+          window.location.href = '/jobs';
+        }
+      }, 2000);
     }
   }, [status, router]);
 
@@ -160,6 +170,24 @@ export function CreateJobForm() {
         {status === 'success' && 'Success! Redirecting...'}
         {status === 'error' && 'Try Again'}
       </button>
+
+      {/* Success message with manual navigation */}
+      {status === 'success' && (
+        <div className="p-4 bg-green-900/20 border border-green-500 rounded-lg">
+          <p className="text-green-400 text-sm mb-2">
+            ✅ Job created successfully! Redirecting to jobs page...
+          </p>
+          <p className="text-gray-400 text-xs">
+            If you're not redirected automatically,{' '}
+            <button
+              onClick={() => router.push('/jobs')}
+              className="text-[#0052FF] hover:text-[#0046DD] underline"
+            >
+              click here
+            </button>
+          </p>
+        </div>
+      )}
 
       {/* Transaction Notification */}
       <TxNotification status={status} txHash={txHash} error={error} />
