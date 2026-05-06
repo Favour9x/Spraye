@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAccount } from 'wagmi';
 import { useJobCount } from '@/lib/hooks/useJobCount';
@@ -43,13 +43,13 @@ export default function JobsPage() {
     setSelectedSkills(profile.skills);
   };
 
-  const handleSkillsUpdate = (skills: string[]) => {
+  const handleSkillsUpdate = useCallback((skills: string[]) => {
     setAllSkills(prev => {
       const newSkills = new Set(prev);
       skills.forEach(skill => newSkills.add(skill));
       return newSkills;
     });
-  };
+  }, []);
 
   return (
     <div className="min-h-screen py-8">
@@ -241,10 +241,12 @@ function JobListItem({
 }) {
   const { job, isLoading } = useJob(jobId);
 
-  // Update skills when job loads
-  if (job && job.requiredSkills.length > 0) {
-    onSkillsUpdate(job.requiredSkills);
-  }
+  // Update skills when job loads (using useEffect to avoid render loop)
+  useEffect(() => {
+    if (job && job.requiredSkills.length > 0) {
+      onSkillsUpdate(job.requiredSkills);
+    }
+  }, [job, onSkillsUpdate]);
 
   if (isLoading || !job) {
     return null;
