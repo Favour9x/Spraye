@@ -203,7 +203,12 @@ contract FreelancerMarketplace {
         job.amount = amount;
         job.state = JobState.OPEN;
         job.description = description;
-        job.requiredSkills = requiredSkills;
+        
+        // Copy skills array manually to avoid old codegen issue
+        for (uint256 i = 0; i < requiredSkills.length; i++) {
+            job.requiredSkills.push(requiredSkills[i]);
+        }
+        
         job.deliverable = "";
         job.applicationCount = 0;
 
