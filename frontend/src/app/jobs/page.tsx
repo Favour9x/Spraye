@@ -16,6 +16,7 @@ export default function JobsPage() {
   const { profile } = useFreelancerProfile(address);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [showOnlyOpen, setShowOnlyOpen] = useState(true);
+  const [allSkills, setAllSkills] = useState<Set<string>>(new Set());
 
   // Debug logging
   console.log('📊 Jobs Page Debug:');
@@ -30,15 +31,6 @@ export default function JobsPage() {
     window.location.reload();
   };
 
-  // Get all unique skills from all jobs
-  const allSkills = new Set<string>();
-  for (let i = 0; i < Number(count || 0); i++) {
-    const { job } = useJob(BigInt(i));
-    if (job) {
-      job.requiredSkills.forEach(skill => allSkills.add(skill));
-    }
-  }
-
   const toggleSkill = (skill: string) => {
     setSelectedSkills(prev =>
       prev.includes(skill)
@@ -49,6 +41,14 @@ export default function JobsPage() {
 
   const loadMySkills = () => {
     setSelectedSkills(profile.skills);
+  };
+
+  const handleSkillsUpdate = (skills: string[]) => {
+    setAllSkills(prev => {
+      const newSkills = new Set(prev);
+      skills.forEach(skill => newSkills.add(skill));
+      return newSkills;
+    });
   };
 
   return (
@@ -192,6 +192,7 @@ export default function JobsPage() {
             count={count}
             selectedSkills={selectedSkills}
             showOnlyOpen={showOnlyOpen}
+            onSkillsUpdate={handleSkillsUpdate}
           />
         ) : null}
       </div>
@@ -203,10 +204,12 @@ function JobList({
   count,
   selectedSkills,
   showOnlyOpen,
+  onSkillsUpdate,
 }: {
   count: bigint;
   selectedSkills: string[];
   showOnlyOpen: boolean;
+  onSkillsUpdate: (skills: string[]) => void;
 }) {
   const jobIds = Array.from({ length: Number(count) }, (_, i) => BigInt(i));
 
@@ -218,6 +221,7 @@ function JobList({
           jobId={jobId}
           selectedSkills={selectedSkills}
           showOnlyOpen={showOnlyOpen}
+          onSkillsUpdate={onSkillsUpdate}
         />
       ))}
     </div>
@@ -228,12 +232,19 @@ function JobListItem({
   jobId,
   selectedSkills,
   showOnlyOpen,
+  onSkillsUpdate,
 }: {
   jobId: bigint;
   selectedSkills: string[];
   showOnlyOpen: boolean;
+  onSkillsUpdate: (skills: string[]) => void;
 }) {
   const { job, isLoading } = useJob(jobId);
+
+  // Update skills when job loads
+  if (job && job.requiredSkills.length > 0) {
+    onSkillsUpdate(job.requiredSkills);
+  }
 
   if (isLoading || !job) {
     return null;
