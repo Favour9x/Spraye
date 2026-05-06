@@ -13,13 +13,55 @@ Go to [https://remix.ethereum.org](https://remix.ethereum.org)
 ### Step 3: Configure Compiler Settings ⚠️ IMPORTANT
 1. Go to the "Solidity Compiler" tab (left sidebar)
 2. Select compiler version: **`0.8.24`** or higher
-3. **CRITICAL:** Click "Advanced Configurations" (at the bottom)
-4. **Enable "via IR"** checkbox (this uses the new IR-based code generator)
-   - This is required to avoid the "Copying nested calldata dynamic arrays" error
-5. Click "Compile FreelancerMarketplace.sol"
+3. **Enable via IR using configuration file:**
+   
+   **Option A: Use Configuration File (RECOMMENDED)**
+   - Click "Advanced Configurations"
+   - Check ✅ "Use configuration file"
+   - In the file explorer, create a new file: `.remix-compiler.config.json` (note the dot at the start)
+   - Paste this exact JSON:
+     ```json
+     {
+       "language": "Solidity",
+       "settings": {
+         "optimizer": {
+           "enabled": true,
+           "runs": 200
+         },
+         "outputSelection": {
+           "*": {
+             "*": [
+               "abi",
+               "evm.bytecode",
+               "evm.deployedBytecode",
+               "evm.methodIdentifiers",
+               "metadata"
+             ],
+             "": [
+               "ast"
+             ]
+           }
+         },
+         "viaIR": true
+       }
+     }
+     ```
+   - Save the file
+   - Go back to compiler tab and click "Compile FreelancerMarketplace.sol"
+   
+   **Option B: Manual Settings (if config file doesn't work)**
+   - In "Advanced Configurations", set:
+     - Language: Solidity
+     - EVM Version: default
+     - ✅ Enable Optimization
+   - Then in the Remix file explorer, look for a `.deps` folder or settings
+   - Note: Some Remix versions may not show the via IR checkbox directly
+   
+4. Click "Compile FreelancerMarketplace.sol"
+5. Wait 30-60 seconds (IR compilation is slower)
 6. Ensure there are no errors
 
-**Why "via IR" is needed:**
+**Why "viaIR: true" is needed:**
 The old Solidity code generator cannot copy `string[] calldata` to storage directly. The new IR-based generator handles this correctly.
 
 ### Step 4: Connect to Arc Testnet
