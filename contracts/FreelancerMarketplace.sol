@@ -47,7 +47,6 @@ contract FreelancerMarketplace {
     error ApplicationNotFound(uint256 jobId, address freelancer);
     error TransferFailed();
     error TooManySkills(uint256 provided, uint256 max);
-    error InsufficientDisputeFee(uint256 provided, uint256 required);
 
     // ══════════════════════════════════════════════════════════════════════════════
     // TYPES
