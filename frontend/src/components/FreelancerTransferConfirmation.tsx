@@ -155,51 +155,6 @@ export function FreelancerTransferConfirmation({ jobId, jobDescription, jobClien
           <p className="text-xs text-gray-500 mt-2">
             This page automatically checks for updates every 10 seconds. If the client has already requested the transfer, click the Refresh button above.
           </p>
-          
-          {/* Always show debug info */}
-          <div className="mt-3 p-3 bg-white border-2 border-blue-400 rounded text-sm">
-            <p className="font-bold text-gray-800 mb-2">🔍 Debug Info:</p>
-            
-            {isLoading && (
-              <p className="text-gray-600">⏳ Loading job data from blockchain...</p>
-            )}
-            
-            {isError && (
-              <div className="text-red-600">
-                <p className="font-bold">❌ Error loading job data:</p>
-                <p className="text-xs mt-1">{error?.message || 'Unknown error'}</p>
-                <p className="text-xs mt-1">Try clicking the Refresh button above.</p>
-              </div>
-            )}
-            
-            {job ? (
-              <div className="space-y-1">
-                <p className="font-mono">
-                  <span className="text-gray-600">Job State:</span>{' '}
-                  <span className="font-bold text-lg">{job.state}</span>{' '}
-                  <span className="text-gray-600">
-                    ({['OPEN', 'ASSIGNED', 'SUBMITTED', 'TRANSFER_REQUESTED', 'APPROVED', 'DISPUTED', 'RESOLVED'][job.state]})
-                  </span>
-                </p>
-                <p className="font-mono">
-                  <span className="text-gray-600">Expected:</span>{' '}
-                  <span className="font-bold text-lg">3</span>{' '}
-                  <span className="text-gray-600">(TRANSFER_REQUESTED)</span>
-                </p>
-                <div className="mt-2 pt-2 border-t border-blue-200">
-                  {job.state === 2 ? (
-                    <p className="text-yellow-700">⏳ Waiting for client to request transfer...</p>
-                  ) : job.state === 3 ? (
-                    <p className="text-green-700 font-bold">✅ Transfer requested! Page should update now...</p>
-                  ) : (
-                    <p className="text-gray-600">❓ Unexpected state: {job.state}</p>
-                  )}
-                </div>
-              </div>
-            ) : !isLoading && !isError ? (
-              <p className="text-gray-600">No job data available</p>
-            ) : null}
-          </div>
         </div>
       </div>
     );

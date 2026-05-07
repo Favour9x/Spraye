@@ -40,6 +40,7 @@ contract FreelancerMarketplace {
     error NotFreelancer(address caller, address expected);
     error NotClient(address caller, address expected);
     error NotArbitrator(address caller, address expected);
+    error NotPlatformWallet(address caller, address expected);
     error InvalidState(uint256 jobId, JobState current, JobState required);
     error JobNotFound(uint256 jobId);
     error AlreadyApplied(uint256 jobId, address freelancer);
@@ -47,6 +48,8 @@ contract FreelancerMarketplace {
     error ApplicationNotFound(uint256 jobId, address freelancer);
     error TransferFailed();
     error TooManySkills(uint256 provided, uint256 max);
+    error InvalidFeePercent(uint256 feePercent);
+    error ProofLinkEmpty();
 
     // ══════════════════════════════════════════════════════════════════════════════
     // TYPES
@@ -72,12 +75,14 @@ contract FreelancerMarketplace {
         string[] requiredSkills;    // Required skills (e.g., ["Solidity", "React"])
         string deliverable;         // Submitted work (empty until submitted)
         uint256 applicationCount;   // Number of applications
+        uint256 deadline;           // Application deadline timestamp
     }
 
     struct Application {
         address freelancer;
         string proposal;            // Why they're a good fit
         uint256 timestamp;
+        string estimatedDelivery;   // Estimated delivery time
     }
 
     // ══════════════════════════════════════════════════════════════════════════════
@@ -89,13 +94,16 @@ contract FreelancerMarketplace {
         address indexed client,
         uint256 amount,
         string description,
-        string[] requiredSkills
+        string[] requiredSkills,
+        string githubUsername,
+        uint256 deadline
     );
 
     event JobApplicationSubmitted(
         uint256 indexed jobId,
         address indexed freelancer,
-        string proposal
+        string proposal,
+        string estimatedDelivery
     );
 
     event FreelancerAssigned(
@@ -112,6 +120,12 @@ contract FreelancerMarketplace {
         uint256 indexed jobId
     );
 
+    event TransferConfirmed(
+        uint256 indexed jobId,
+        address indexed freelancer,
+        string imgurLink
+    );
+
     event JobApproved(
         uint256 indexed jobId,
         address indexed freelancer,
@@ -121,6 +135,11 @@ contract FreelancerMarketplace {
     event PlatformFeePaid(
         uint256 indexed jobId,
         uint256 feeAmount
+    );
+
+    event PlatformFeeUpdated(
+        uint256 oldFeePercent,
+        uint256 newFeePercent
     );
 
     event DisputeRaised(
@@ -147,19 +166,25 @@ contract FreelancerMarketplace {
     address public immutable arbitrator;
     IERC20 public immutable usdc;
     IReputationRegistry public immutable reputationRegistry;
+    address public immutable platformWallet;
 
     uint256 private _jobCount;
     mapping(uint256 => Job) private _jobs;
     mapping(uint256 => mapping(address => Application)) private _applications;
     mapping(uint256 => address[]) private _applicants;
+    
+    // NEW: Store GitHub username per job
+    mapping(uint256 => string) public jobGithubUsernames;
+    
+    // NEW: Store transfer proof links per job
+    mapping(uint256 => string) public transferProofLinks;
 
     uint256 public constant MAX_DESCRIPTION_LENGTH = 2048;
     uint256 public constant MAX_DELIVERABLE_LENGTH = 2048;
     uint256 public constant MAX_SKILLS = 10;
 
-    // Platform fee: 5% deducted from freelancer payment
-    uint256 public constant PLATFORM_FEE_PERCENT = 5;
-    address public immutable platformWallet;
+    // Platform fee: adjustable, default 5%
+    uint256 public platformFeePercent = 5;
 
     // Dispute fee: 1 USDC (6 decimals)
     uint256 public constant DISPUTE_FEE = 1_000_000;
@@ -190,17 +215,21 @@ contract FreelancerMarketplace {
     // ══════════════════════════════════════════════════════════════════════════════
 
     /**
-     * @notice Create a new job posting with description and required skills
+     * @notice Create a new job posting with description, required skills, and GitHub username
      * @dev Caller must have approved this contract for `amount` USDC beforehand
      * @param amount USDC amount in 6-decimal units (must be > 0)
      * @param description Job description explaining what needs to be done
      * @param requiredSkills Array of required skills (max 10)
+     * @param githubUsername Client's GitHub username for repo transfer
+     * @param deadline Application deadline timestamp
      * @return jobId The ID of the newly created job
      */
     function createJob(
         uint256 amount,
         string calldata description,
-        string[] memory requiredSkills
+        string[] memory requiredSkills,
+        string calldata githubUsername,
+        uint256 deadline
     ) external returns (uint256 jobId) {
         if (amount == 0) revert ZeroAmount();
         
@@ -231,19 +260,24 @@ contract FreelancerMarketplace {
         job.requiredSkills = requiredSkills;
         job.deliverable = "";
         job.applicationCount = 0;
+        job.deadline = deadline;
+
+        // Store GitHub username onchain
+        jobGithubUsernames[jobId] = githubUsername;
 
         _jobCount++;
 
-        emit JobCreated(jobId, msg.sender, amount, description, requiredSkills);
+        emit JobCreated(jobId, msg.sender, amount, description, requiredSkills, githubUsername, deadline);
     }
 
     /**
-     * @notice Apply for an open job
-     * @dev Only callable when job is in OPEN state
+     * @notice Apply for an open job with estimated delivery time
+     * @dev Only callable when job is in OPEN state and before deadline
      * @param jobId The job to apply for
      * @param proposal Why you're a good fit for this job
+     * @param estimatedDelivery Estimated delivery time (e.g., "1 week", "2 weeks")
      */
-    function applyForJob(uint256 jobId, string calldata proposal) external {
+    function applyForJob(uint256 jobId, string calldata proposal, string calldata estimatedDelivery) external {
         if (jobId >= _jobCount) revert JobNotFound(jobId);
 
         Job storage job = _jobs[jobId];
@@ -263,13 +297,14 @@ contract FreelancerMarketplace {
         _applications[jobId][msg.sender] = Application({
             freelancer: msg.sender,
             proposal: proposal,
-            timestamp: block.timestamp
+            timestamp: block.timestamp,
+            estimatedDelivery: estimatedDelivery
         });
 
         _applicants[jobId].push(msg.sender);
         job.applicationCount++;
 
-        emit JobApplicationSubmitted(jobId, msg.sender, proposal);
+        emit JobApplicationSubmitted(jobId, msg.sender, proposal, estimatedDelivery);
     }
 
     /**
@@ -354,7 +389,34 @@ contract FreelancerMarketplace {
     }
 
     /**
-     * @notice Approve submitted work and release USDC to freelancer (minus 5% platform fee)
+     * @notice Confirm transfer with proof link (imgur screenshot)
+     * @dev Only callable by freelancer when job is in TRANSFER_REQUESTED state
+     * @param jobId The job to confirm transfer for
+     * @param imgurLink Link to imgur screenshot showing transfer confirmation
+     */
+    function confirmTransfer(uint256 jobId, string calldata imgurLink) external {
+        if (jobId >= _jobCount) revert JobNotFound(jobId);
+
+        Job storage job = _jobs[jobId];
+
+        if (job.state != JobState.TRANSFER_REQUESTED) {
+            revert InvalidState(jobId, job.state, JobState.TRANSFER_REQUESTED);
+        }
+        if (msg.sender != job.freelancer) {
+            revert NotFreelancer(msg.sender, job.freelancer);
+        }
+        if (bytes(imgurLink).length == 0) revert ProofLinkEmpty();
+
+        // Store proof link onchain
+        transferProofLinks[jobId] = imgurLink;
+
+        // Job state remains TRANSFER_REQUESTED until client approves
+
+        emit TransferConfirmed(jobId, msg.sender, imgurLink);
+    }
+
+    /**
+     * @notice Approve submitted work and release USDC to freelancer (minus platform fee)
      * @dev Only callable by client. Can be called from SUBMITTED or TRANSFER_REQUESTED state
      * @param jobId The job to approve
      */
@@ -373,8 +435,8 @@ contract FreelancerMarketplace {
 
         job.state = JobState.APPROVED;
 
-        // Calculate platform fee (5% of total amount)
-        uint256 platformFee = (job.amount * PLATFORM_FEE_PERCENT) / 100;
+        // Calculate platform fee (adjustable percentage)
+        uint256 platformFee = (job.amount * platformFeePercent) / 100;
         uint256 freelancerAmount = job.amount - platformFee;
 
         // Transfer platform fee to platform wallet
@@ -452,8 +514,8 @@ contract FreelancerMarketplace {
         if (favorFreelancer) {
             recipient = job.freelancer;
             
-            // Calculate platform fee (5% of total amount)
-            uint256 platformFee = (job.amount * PLATFORM_FEE_PERCENT) / 100;
+            // Calculate platform fee (adjustable percentage)
+            uint256 platformFee = (job.amount * platformFeePercent) / 100;
             uint256 freelancerAmount = job.amount - platformFee;
 
             // Transfer platform fee
@@ -480,6 +542,25 @@ contract FreelancerMarketplace {
         }
 
         emit DisputeResolved(jobId, msg.sender, recipient, job.amount);
+    }
+
+    /**
+     * @notice Update platform fee percentage
+     * @dev Only callable by platform wallet
+     * @param newFeePercent New fee percentage (0-100)
+     */
+    function setPlatformFee(uint256 newFeePercent) external {
+        if (msg.sender != platformWallet) {
+            revert NotPlatformWallet(msg.sender, platformWallet);
+        }
+        if (newFeePercent > 100) {
+            revert InvalidFeePercent(newFeePercent);
+        }
+
+        uint256 oldFeePercent = platformFeePercent;
+        platformFeePercent = newFeePercent;
+
+        emit PlatformFeeUpdated(oldFeePercent, newFeePercent);
     }
 
     // ══════════════════════════════════════════════════════════════════════════════
@@ -527,5 +608,25 @@ contract FreelancerMarketplace {
      */
     function jobCount() external view returns (uint256 count) {
         return _jobCount;
+    }
+
+    /**
+     * @notice Get GitHub username for a job
+     * @param jobId The job ID
+     * @return githubUsername The client's GitHub username
+     */
+    function getGithubUsername(uint256 jobId) external view returns (string memory) {
+        if (jobId >= _jobCount) revert JobNotFound(jobId);
+        return jobGithubUsernames[jobId];
+    }
+
+    /**
+     * @notice Get transfer proof link for a job
+     * @param jobId The job ID
+     * @return proofLink The imgur proof link
+     */
+    function getTransferProofLink(uint256 jobId) external view returns (string memory) {
+        if (jobId >= _jobCount) revert JobNotFound(jobId);
+        return transferProofLinks[jobId];
     }
 }

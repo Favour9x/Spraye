@@ -35,19 +35,6 @@ export function JobDetail({ job, onRefresh }: JobDetailProps) {
 
   const role = isClient ? 'client' : isFreelancer ? 'freelancer' : isArbitrator ? 'arbitrator' : 'observer';
 
-  // Debug logging for troubleshooting
-  console.log('🔍 JobDetail Debug:', {
-    jobId: job.id.toString(),
-    stateLabel,
-    isClient,
-    isFreelancer,
-    isArbitrator,
-    role,
-    connectedAddress: address,
-    freelancerAddress: job.freelancer,
-    shouldShowTransferComponent: isFreelancer && (stateLabel === 'SUBMITTED' || stateLabel === 'TRANSFER_REQUESTED')
-  });
-
   return (
     <div className="space-y-6">
       {/* Persistent Info Notice for Active Jobs */}
