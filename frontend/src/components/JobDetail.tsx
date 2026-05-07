@@ -7,6 +7,7 @@ import { SubmitWorkForm } from './SubmitWorkForm';
 import { ActionButtons } from './ActionButtons';
 import { ApplyForJobForm } from './ApplyForJobForm';
 import { ApplicationsList } from './ApplicationsList';
+import { FreelancerDisputeResponse } from './FreelancerDisputeResponse';
 
 interface JobDetailProps {
   job: Job;
@@ -155,6 +156,14 @@ export function JobDetail({ job, onRefresh }: JobDetailProps) {
         <div className="bg-white border border-gray-200 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Submit Your Work</h3>
           <SubmitWorkForm jobId={job.id} jobDescription={job.description} onSuccess={onRefresh} />
+        </div>
+      )}
+
+      {/* Freelancer Dispute Response (DISPUTED state) */}
+      {isFreelancer && stateLabel === 'DISPUTED' && (
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Dispute Raised</h3>
+          <FreelancerDisputeResponse jobId={job.id} />
         </div>
       )}
 

@@ -25,6 +25,10 @@ export function ActionButtons({ jobId, role, state, onSuccess }: ActionButtonsPr
   const [checkedContact, setCheckedContact] = useState(false);
   const [checkedTransfer, setCheckedTransfer] = useState(false);
   
+  // Dispute form state
+  const [showDisputeForm, setShowDisputeForm] = useState(false);
+  const [disputeReason, setDisputeReason] = useState('');
+  
   const allChecked = checkedDemo && checkedContact && checkedTransfer;
 
   const handleApprove = async () => {
@@ -36,6 +40,16 @@ export function ActionButtons({ jobId, role, state, onSuccess }: ActionButtonsPr
   };
 
   const handleDispute = async () => {
+    if (!disputeReason.trim()) {
+      return; // Don't submit without reason
+    }
+    
+    // Store dispute reason in localStorage for reference
+    localStorage.setItem(`dispute_reason_${jobId}`, JSON.stringify({
+      reason: disputeReason,
+      timestamp: Date.now()
+    }));
+    
     setActiveAction('dispute');
     await raiseDispute(jobId);
     if (disputeStatus === 'success') {
@@ -65,81 +79,140 @@ export function ActionButtons({ jobId, role, state, onSuccess }: ActionButtonsPr
   if (role === 'client' && state === 'SUBMITTED') {
     return (
       <div className="space-y-4">
-        {/* Approval Checklist */}
-        <div className="p-4 bg-gray-50 border border-gray-300 rounded-lg space-y-3">
-          <h4 className="font-semibold text-gray-900 text-sm mb-3">Before you proceed, please confirm all of the following:</h4>
-          
-          <label className="flex items-start gap-3 cursor-pointer group">
-            <input
-              type="checkbox"
-              checked={checkedDemo}
-              onChange={(e) => setCheckedDemo(e.target.checked)}
-              className="mt-1 w-4 h-4 rounded border-gray-300 text-[#0052FF] focus:ring-[#0052FF]"
-            />
-            <span className="text-sm text-gray-700 group-hover:text-gray-900">
-              I have reviewed the live demo link submitted by the freelancer
-            </span>
-          </label>
+        {!showDisputeForm ? (
+          <>
+            {/* Approval Checklist */}
+            <div className="p-4 bg-gray-50 border border-gray-300 rounded-lg space-y-3">
+              <h4 className="font-semibold text-gray-900 text-sm mb-3">Before you proceed, please confirm all of the following:</h4>
+              
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={checkedDemo}
+                  onChange={(e) => setCheckedDemo(e.target.checked)}
+                  className="mt-1 w-4 h-4 rounded border-gray-300 text-[#0052FF] focus:ring-[#0052FF]"
+                />
+                <span className="text-sm text-gray-700 group-hover:text-gray-900">
+                  I have reviewed the live demo link submitted by the freelancer
+                </span>
+              </label>
 
-          <label className="flex items-start gap-3 cursor-pointer group">
-            <input
-              type="checkbox"
-              checked={checkedContact}
-              onChange={(e) => setCheckedContact(e.target.checked)}
-              className="mt-1 w-4 h-4 rounded border-gray-300 text-[#0052FF] focus:ring-[#0052FF]"
-            />
-            <span className="text-sm text-gray-700 group-hover:text-gray-900">
-              I have contacted the freelancer and requested the GitHub repo transfer
-            </span>
-          </label>
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={checkedContact}
+                  onChange={(e) => setCheckedContact(e.target.checked)}
+                  className="mt-1 w-4 h-4 rounded border-gray-300 text-[#0052FF] focus:ring-[#0052FF]"
+                />
+                <span className="text-sm text-gray-700 group-hover:text-gray-900">
+                  I have contacted the freelancer and requested the GitHub repo transfer
+                </span>
+              </label>
 
-          <label className="flex items-start gap-3 cursor-pointer group">
-            <input
-              type="checkbox"
-              checked={checkedTransfer}
-              onChange={(e) => setCheckedTransfer(e.target.checked)}
-              className="mt-1 w-4 h-4 rounded border-gray-300 text-[#0052FF] focus:ring-[#0052FF]"
-            />
-            <span className="text-sm text-gray-700 group-hover:text-gray-900">
-              I have received the repo transfer and verified it in my GitHub account
-            </span>
-          </label>
-        </div>
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={checkedTransfer}
+                  onChange={(e) => setCheckedTransfer(e.target.checked)}
+                  className="mt-1 w-4 h-4 rounded border-gray-300 text-[#0052FF] focus:ring-[#0052FF]"
+                />
+                <span className="text-sm text-gray-700 group-hover:text-gray-900">
+                  I have received the repo transfer and verified it in my GitHub account
+                </span>
+              </label>
+            </div>
 
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <button
-              onClick={handleApprove}
-              disabled={isDisabled || !allChecked}
-              className={`w-full px-4 py-2 text-white font-medium rounded-lg transition-colors ${
-                isDisabled || !allChecked ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#0052FF] hover:bg-[#0046DD]'
-              }`}
-            >
-              {approveStatus === 'pending' && activeAction === 'approve' ? 'Approving...' : 'Approve Work'}
-            </button>
-            <p className="text-xs text-gray-500 mt-1">
-              Clicking Approve permanently releases the USDC escrow to the freelancer. This cannot be undone.
-            </p>
-          </div>
-          
-          <div className="flex-1">
-            <button
-              onClick={handleDispute}
-              disabled={isDisabled}
-              className={`w-full px-4 py-2 text-white font-medium rounded-lg transition-colors ${
-                isDisabled ? 'bg-gray-700 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'
-              }`}
-            >
-              {disputeStatus === 'pending' && activeAction === 'dispute' ? 'Raising...' : 'Raise Dispute'}
-            </button>
-            <p className="text-xs text-gray-500 mt-1">
-              Click this if the delivered work does not match the original job description, or if the freelancer has not transferred the GitHub repo after being asked.
-            </p>
-          </div>
-        </div>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <button
+                  onClick={handleApprove}
+                  disabled={isDisabled || !allChecked}
+                  className={`w-full px-4 py-2 text-white font-medium rounded-lg transition-colors ${
+                    isDisabled || !allChecked ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#0052FF] hover:bg-[#0046DD]'
+                  }`}
+                >
+                  {approveStatus === 'pending' && activeAction === 'approve' ? 'Approving...' : 'Approve Work'}
+                </button>
+                <p className="text-xs text-gray-500 mt-1">
+                  Clicking Approve permanently releases the USDC escrow to the freelancer. This cannot be undone.
+                </p>
+              </div>
+              
+              <div className="flex-1">
+                <button
+                  onClick={() => setShowDisputeForm(true)}
+                  disabled={isDisabled}
+                  className={`w-full px-4 py-2 text-white font-medium rounded-lg transition-colors ${
+                    isDisabled ? 'bg-gray-700 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'
+                  }`}
+                >
+                  Raise Dispute
+                </button>
+                <p className="text-xs text-gray-500 mt-1">
+                  Click this if the delivered work does not match the original job description, or if the freelancer has not transferred the GitHub repo after being asked.
+                </p>
+              </div>
+            </div>
 
-        {activeAction === 'approve' && <TxNotification status={approveStatus} txHash={approveTxHash} error={approveError} />}
-        {activeAction === 'dispute' && <TxNotification status={disputeStatus} txHash={disputeTxHash} error={disputeError} />}
+            {activeAction === 'approve' && <TxNotification status={approveStatus} txHash={approveTxHash} error={approveError} />}
+          </>
+        ) : (
+          <>
+            {/* Dispute Form */}
+            <div className="p-4 bg-red-50 border-2 border-red-300 rounded-lg space-y-4">
+              <div className="flex items-start gap-3">
+                <svg className="w-6 h-6 text-red-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-gray-900 mb-2">You are raising a dispute</h4>
+                  <p className="text-sm text-gray-700 mb-3">
+                    The arbitrator will review the original job description, the submitted work links, and your reason below. Please be specific.
+                  </p>
+                  
+                  <textarea
+                    value={disputeReason}
+                    onChange={(e) => setDisputeReason(e.target.value)}
+                    placeholder="Describe clearly how the delivered work does not match what was agreed in the job description"
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900"
+                  />
+                  
+                  <p className="text-sm text-gray-700 mt-3 mb-2">
+                    Possible outcomes: Full payment to the freelancer, or full refund to you — based on the arbitrator's review of the evidence.
+                  </p>
+                  
+                  <div className="p-3 bg-red-100 border border-red-300 rounded-lg">
+                    <p className="text-sm text-red-800 font-medium">
+                      ⚠️ Important: Raising a false dispute after already receiving the GitHub repo transfer is a violation of ArcHire terms and will be reviewed by the arbitrator.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDisputeForm(false)}
+                disabled={isDisabled}
+                className="flex-1 px-4 py-2 bg-gray-600 text-white font-medium rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDispute}
+                disabled={isDisabled || !disputeReason.trim()}
+                className={`flex-1 px-4 py-2 text-white font-medium rounded-lg transition-colors ${
+                  isDisabled || !disputeReason.trim() ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'
+                }`}
+              >
+                {disputeStatus === 'pending' && activeAction === 'dispute' ? 'Raising Dispute...' : 'Confirm Dispute'}
+              </button>
+            </div>
+
+            {activeAction === 'dispute' && <TxNotification status={disputeStatus} txHash={disputeTxHash} error={disputeError} />}
+          </>
+        )}
       </div>
     );
   }
