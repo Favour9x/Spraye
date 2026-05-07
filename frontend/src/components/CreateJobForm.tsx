@@ -125,7 +125,7 @@ export function CreateJobForm() {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Describe what needs to be done..."
-          rows={4}
+          rows={10}
           disabled={isDisabled}
           className={`w-full px-4 py-2 bg-black border rounded-lg focus:ring-2 focus:ring-[#0052FF] focus:border-transparent text-white ${
             errors.description ? 'border-red-500' : 'border-gray-700'
@@ -136,6 +136,9 @@ export function CreateJobForm() {
         )}
         <p className="mt-1 text-xs text-gray-500">
           {description.length}/2048 characters
+        </p>
+        <p className="mt-1 text-xs text-gray-400">
+          Maximum 2048 characters. For detailed project requirements, paste a Google Doc or Notion link inside your description so freelancers can access your full brief.
         </p>
       </div>
 
