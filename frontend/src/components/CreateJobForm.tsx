@@ -12,6 +12,7 @@ export function CreateJobForm() {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [skills, setSkills] = useState('');
+  const [githubUsername, setGithubUsername] = useState('');
   const [errors, setErrors] = useState<{ amount?: string; description?: string; skills?: string }>({});
 
   const { createJob, status, txHash, error } = useCreateJob();
@@ -73,6 +74,17 @@ export function CreateJobForm() {
 
     const amountInWei = parseUsdc(amount);
     const skillsArray = skills.split(',').map(s => s.trim()).filter(s => s);
+    
+    // Store GitHub username in localStorage with job description for later retrieval
+    if (githubUsername.trim()) {
+      const jobData = {
+        description,
+        githubUsername: githubUsername.trim(),
+        timestamp: Date.now()
+      };
+      localStorage.setItem(`job_github_${description.substring(0, 50)}`, JSON.stringify(jobData));
+    }
+    
     await createJob(amountInWei, description, skillsArray);
   };
 
@@ -148,6 +160,27 @@ export function CreateJobForm() {
         )}
         <p className="mt-1 text-xs text-gray-500">
           Enter up to 10 skills, separated by commas
+        </p>
+      </div>
+
+      {/* GitHub Username (Optional) */}
+      <div>
+        <label htmlFor="githubUsername" className="block text-sm font-medium text-gray-300 mb-2">
+          GitHub Username <span className="text-gray-500 font-normal">(Optional)</span>
+        </label>
+        <input
+          type="text"
+          id="githubUsername"
+          value={githubUsername}
+          onChange={(e) => setGithubUsername(e.target.value)}
+          placeholder="e.g. johndoe"
+          disabled={isDisabled}
+          className={`w-full px-4 py-2 bg-black border border-gray-700 rounded-lg focus:ring-2 focus:ring-[#0052FF] focus:border-transparent text-white ${
+            isDisabled ? 'bg-gray-900 cursor-not-allowed' : ''
+          }`}
+        />
+        <p className="mt-1 text-xs text-gray-500">
+          Required for code or app projects. Freelancers will use this to transfer the completed codebase to you after approval.
         </p>
       </div>
 

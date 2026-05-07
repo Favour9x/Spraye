@@ -135,7 +135,7 @@ export function JobDetail({ job, onRefresh }: JobDetailProps) {
       {isFreelancer && stateLabel === 'ASSIGNED' && (
         <div className="bg-white border border-gray-200 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Submit Your Work</h3>
-          <SubmitWorkForm jobId={job.id} onSuccess={onRefresh} />
+          <SubmitWorkForm jobId={job.id} jobDescription={job.description} onSuccess={onRefresh} />
         </div>
       )}
 
