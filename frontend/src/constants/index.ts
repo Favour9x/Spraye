@@ -3,7 +3,7 @@ export const ARC_TESTNET_CHAIN_ID = 5042002;
 export const USDC_ADDRESS = '0x3600000000000000000000000000000000000000' as const;
 export const USDC_DECIMALS = 6; // ERC-20 interface uses 6 decimals
 
-export const FREELANCER_ESCROW_ADDRESS = '0xe305ACFE19C9E46B7Cf685b4655d21d8F6E653B7' as `0x${string}`;
+export const FREELANCER_ESCROW_ADDRESS = '0x6e1859b89fc09c291C7a898aC2F4830804B23AA8' as `0x${string}`;
 
 // Debug: Log the contract address to verify it's loaded
 if (typeof window !== 'undefined') {

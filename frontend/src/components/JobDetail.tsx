@@ -35,10 +35,23 @@ export function JobDetail({ job, onRefresh }: JobDetailProps) {
 
   const role = isClient ? 'client' : isFreelancer ? 'freelancer' : isArbitrator ? 'arbitrator' : 'observer';
 
+  // Debug logging for troubleshooting
+  console.log('🔍 JobDetail Debug:', {
+    jobId: job.id.toString(),
+    stateLabel,
+    isClient,
+    isFreelancer,
+    isArbitrator,
+    role,
+    connectedAddress: address,
+    freelancerAddress: job.freelancer,
+    shouldShowTransferComponent: isFreelancer && (stateLabel === 'SUBMITTED' || stateLabel === 'TRANSFER_REQUESTED')
+  });
+
   return (
     <div className="space-y-6">
       {/* Persistent Info Notice for Active Jobs */}
-      {(stateLabel === 'ASSIGNED' || stateLabel === 'SUBMITTED' || stateLabel === 'DISPUTED') && (
+      {(stateLabel === 'ASSIGNED' || stateLabel === 'SUBMITTED' || stateLabel === 'TRANSFER_REQUESTED' || stateLabel === 'DISPUTED') && (
         <div className="p-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg">
           <div className="flex gap-3">
             <svg className="w-6 h-6 text-yellow-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -160,9 +173,20 @@ export function JobDetail({ job, onRefresh }: JobDetailProps) {
         </div>
       )}
 
-      {/* Freelancer Transfer Confirmation (SUBMITTED state) */}
-      {isFreelancer && stateLabel === 'SUBMITTED' && (
+      {/* Freelancer Transfer Confirmation (SUBMITTED or TRANSFER_REQUESTED state) */}
+      {isFreelancer && (stateLabel === 'SUBMITTED' || stateLabel === 'TRANSFER_REQUESTED') && (
         <FreelancerTransferConfirmation jobId={job.id} onConfirm={onRefresh} />
+      )}
+
+      {/* DEBUG: Force show component if not showing */}
+      {!isFreelancer && stateLabel === 'SUBMITTED' && (
+        <div className="bg-red-50 border-2 border-red-500 rounded-lg p-4">
+          <p className="text-red-800 font-bold">⚠️ DEBUG: Component not showing because:</p>
+          <p className="text-sm text-red-700 mt-2">isFreelancer = {isFreelancer ? 'true' : 'false'}</p>
+          <p className="text-sm text-red-700">Connected wallet: {address || 'Not connected'}</p>
+          <p className="text-sm text-red-700">Freelancer address: {job.freelancer}</p>
+          <p className="text-sm text-red-700">Match: {address?.toLowerCase() === job.freelancer.toLowerCase() ? 'YES' : 'NO'}</p>
+        </div>
       )}
 
       {/* Freelancer Dispute Response (DISPUTED state) */}
@@ -174,7 +198,7 @@ export function JobDetail({ job, onRefresh }: JobDetailProps) {
       )}
 
       {/* Action Buttons (Client or Arbitrator) */}
-      {((isClient && stateLabel === 'SUBMITTED') || (isArbitrator && stateLabel === 'DISPUTED')) && (
+      {((isClient && (stateLabel === 'SUBMITTED' || stateLabel === 'TRANSFER_REQUESTED')) || (isArbitrator && stateLabel === 'DISPUTED')) && (
         <div className="bg-white border border-gray-200 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
             {isClient ? 'Review Work' : 'Resolve Dispute'}
@@ -182,7 +206,7 @@ export function JobDetail({ job, onRefresh }: JobDetailProps) {
           <ActionButtons
             jobId={job.id}
             role={isClient ? 'client' : 'arbitrator'}
-            state={stateLabel as 'SUBMITTED' | 'DISPUTED'}
+            state={stateLabel as 'SUBMITTED' | 'TRANSFER_REQUESTED' | 'DISPUTED'}
             onSuccess={onRefresh}
           />
         </div>

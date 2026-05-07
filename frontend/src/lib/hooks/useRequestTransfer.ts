@@ -28,7 +28,7 @@ export function useRequestTransfer() {
         args: [jobId],
       });
 
-      setStatus('success');
+      // Don't set success here - wait for transaction confirmation
     } catch (err) {
       const errorMessage = parseContractError(err);
       if (errorMessage === 'CANCELLED') {

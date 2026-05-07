@@ -113,6 +113,10 @@ export function CreateJobForm() {
         {errors.amount && (
           <p className="mt-1 text-sm text-red-400">{errors.amount}</p>
         )}
+        <p className="mt-2 text-xs text-gray-400 bg-blue-900/20 border border-blue-700 rounded p-2">
+          <strong>Note:</strong> A 5% platform fee is deducted from the freelancer payment on job completion. 
+          Example: for a 100 USDC job, the freelancer receives 95 USDC.
+        </p>
       </div>
 
       {/* Job Description */}

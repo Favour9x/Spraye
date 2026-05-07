@@ -38,10 +38,10 @@ export function parseUsdc(value: string): bigint {
 // JOB STATE
 // ══════════════════════════════════════════════════════════════════════════════
 
-export type JobState = 'OPEN' | 'ASSIGNED' | 'SUBMITTED' | 'APPROVED' | 'DISPUTED' | 'RESOLVED';
+export type JobState = 'OPEN' | 'ASSIGNED' | 'SUBMITTED' | 'TRANSFER_REQUESTED' | 'APPROVED' | 'DISPUTED' | 'RESOLVED';
 
 export function jobStateToLabel(state: number): JobState {
-  const states: JobState[] = ['OPEN', 'ASSIGNED', 'SUBMITTED', 'APPROVED', 'DISPUTED', 'RESOLVED'];
+  const states: JobState[] = ['OPEN', 'ASSIGNED', 'SUBMITTED', 'TRANSFER_REQUESTED', 'APPROVED', 'DISPUTED', 'RESOLVED'];
   return states[state] || 'OPEN';
 }
 
@@ -49,6 +49,7 @@ export const STATE_COLORS: Record<JobState, string> = {
   OPEN: 'bg-purple-900/30 text-purple-300 border-purple-700',
   ASSIGNED: 'bg-[#0052FF]/20 text-[#0052FF] border-[#0052FF]',
   SUBMITTED: 'bg-yellow-900/30 text-yellow-300 border-yellow-700',
+  TRANSFER_REQUESTED: 'bg-blue-900/30 text-blue-300 border-blue-700',
   APPROVED: 'bg-green-900/30 text-green-300 border-green-700',
   DISPUTED: 'bg-red-900/30 text-red-300 border-red-700',
   RESOLVED: 'bg-gray-800 text-gray-300 border-gray-600',

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useReadContract } from 'wagmi';
+import { ESCROW_CONTRACT } from '@/lib/contracts';
 
 interface FreelancerTransferConfirmationProps {
   jobId: bigint;
@@ -8,35 +10,36 @@ interface FreelancerTransferConfirmationProps {
 }
 
 export function FreelancerTransferConfirmation({ jobId, onConfirm }: FreelancerTransferConfirmationProps) {
-  const [transferRequested, setTransferRequested] = useState(false);
   const [transferConfirmed, setTransferConfirmed] = useState(false);
   const [proofLink, setProofLink] = useState('');
   const [clientGithubUsername, setClientGithubUsername] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Poll for transfer state updates every 10 seconds
+  // Read job state from blockchain with aggressive refetching
+  const { data: job, isError, isLoading, error } = useReadContract({
+    ...ESCROW_CONTRACT,
+    functionName: 'getJob',
+    args: [jobId],
+    query: {
+      refetchInterval: 10000, // Refetch every 10 seconds (more aggressive)
+      refetchOnWindowFocus: true, // Refetch when window regains focus
+      refetchOnMount: true, // Always refetch on mount
+      staleTime: 0, // Consider data stale immediately
+    }
+  });
+
+  // Check if transfer was already confirmed in localStorage
   useEffect(() => {
-    const checkTransferState = () => {
-      const transferData = localStorage.getItem(`transfer_request_${jobId}`);
-      if (transferData) {
-        try {
-          const data = JSON.parse(transferData);
-          setTransferRequested(data.requested || false);
-          setTransferConfirmed(data.confirmed || false);
-          setProofLink(data.proofLink || '');
-        } catch (e) {
-          console.error('Failed to parse transfer data:', e);
-        }
+    const transferData = localStorage.getItem(`transfer_request_${jobId}`);
+    if (transferData) {
+      try {
+        const data = JSON.parse(transferData);
+        setTransferConfirmed(data.confirmed || false);
+        setProofLink(data.proofLink || '');
+      } catch (e) {
+        console.error('Failed to parse transfer data:', e);
       }
-    };
-
-    // Initial check
-    checkTransferState();
-
-    // Poll every 10 seconds
-    const interval = setInterval(checkTransferState, 10000);
-
-    return () => clearInterval(interval);
+    }
   }, [jobId]);
 
   // Load client GitHub username from job data
@@ -74,18 +77,91 @@ export function FreelancerTransferConfirmation({ jobId, onConfirm }: FreelancerT
     onConfirm();
   };
 
+  // Check if job state is TRANSFER_REQUESTED (state === 3) OR check localStorage as fallback
+  const transferRequested = (job && job.state === 3) || 
+    (typeof window !== 'undefined' && localStorage.getItem(`transfer_request_${jobId}`)?.includes('"requested":true'));
+
+  // Debug logging with error handling
+  useEffect(() => {
+    console.log('🔍 FreelancerTransferConfirmation Debug:', {
+      jobId: jobId.toString(),
+      isLoading,
+      isError,
+      error: error?.message,
+      jobData: job ? {
+        currentState: job.state,
+        stateLabel: ['OPEN', 'ASSIGNED', 'SUBMITTED', 'TRANSFER_REQUESTED', 'APPROVED', 'DISPUTED', 'RESOLVED'][job.state],
+        transferRequested,
+      } : 'No data',
+      timestamp: new Date().toLocaleTimeString()
+    });
+  }, [job, jobId, transferRequested, isLoading, isError, error]);
+
   // If transfer not requested yet, show waiting message
   if (!transferRequested) {
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Waiting for Client Review</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Waiting for Client Review</h3>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          >
+            🔄 Refresh
+          </button>
+        </div>
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-sm text-gray-700">
             Your work has been submitted. The client is reviewing your demo link. Once they request the GitHub repo transfer, you'll see instructions here.
           </p>
           <p className="text-xs text-gray-500 mt-2">
-            This page automatically checks for updates every 10 seconds.
+            This page automatically checks for updates every 10 seconds. If the client has already requested the transfer, click the Refresh button above.
           </p>
+          
+          {/* Always show debug info */}
+          <div className="mt-3 p-3 bg-white border-2 border-blue-400 rounded text-sm">
+            <p className="font-bold text-gray-800 mb-2">🔍 Debug Info:</p>
+            
+            {isLoading && (
+              <p className="text-gray-600">⏳ Loading job data from blockchain...</p>
+            )}
+            
+            {isError && (
+              <div className="text-red-600">
+                <p className="font-bold">❌ Error loading job data:</p>
+                <p className="text-xs mt-1">{error?.message || 'Unknown error'}</p>
+                <p className="text-xs mt-1">Try clicking the Refresh button above.</p>
+              </div>
+            )}
+            
+            {job ? (
+              <div className="space-y-1">
+                <p className="font-mono">
+                  <span className="text-gray-600">Job State:</span>{' '}
+                  <span className="font-bold text-lg">{job.state}</span>{' '}
+                  <span className="text-gray-600">
+                    ({['OPEN', 'ASSIGNED', 'SUBMITTED', 'TRANSFER_REQUESTED', 'APPROVED', 'DISPUTED', 'RESOLVED'][job.state]})
+                  </span>
+                </p>
+                <p className="font-mono">
+                  <span className="text-gray-600">Expected:</span>{' '}
+                  <span className="font-bold text-lg">3</span>{' '}
+                  <span className="text-gray-600">(TRANSFER_REQUESTED)</span>
+                </p>
+                <div className="mt-2 pt-2 border-t border-blue-200">
+                  {job.state === 2 ? (
+                    <p className="text-yellow-700">⏳ Waiting for client to request transfer...</p>
+                  ) : job.state === 3 ? (
+                    <p className="text-green-700 font-bold">✅ Transfer requested! Page should update now...</p>
+                  ) : (
+                    <p className="text-gray-600">❓ Unexpected state: {job.state}</p>
+                  )}
+                </div>
+              </div>
+            ) : !isLoading && !isError ? (
+              <p className="text-gray-600">No job data available</p>
+            ) : null}
+          </div>
         </div>
       </div>
     );

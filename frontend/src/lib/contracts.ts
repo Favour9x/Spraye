@@ -13,7 +13,8 @@ export const ESCROW_ABI = [
     "inputs": [
       { "internalType": "address", "name": "_arbitrator", "type": "address" },
       { "internalType": "address", "name": "_usdc", "type": "address" },
-      { "internalType": "address", "name": "_reputationRegistry", "type": "address" }
+      { "internalType": "address", "name": "_reputationRegistry", "type": "address" },
+      { "internalType": "address", "name": "_platformWallet", "type": "address" }
     ],
     "stateMutability": "nonpayable",
     "type": "constructor"
@@ -139,9 +140,18 @@ export const ESCROW_ABI = [
     "anonymous": false,
     "inputs": [
       { "indexed": true, "internalType": "uint256", "name": "jobId", "type": "uint256" },
-      { "indexed": true, "internalType": "address", "name": "client", "type": "address" }
+      { "indexed": true, "internalType": "address", "name": "raiser", "type": "address" }
     ],
     "name": "DisputeRaised",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "uint256", "name": "jobId", "type": "uint256" },
+      { "indexed": true, "internalType": "address", "name": "payer", "type": "address" }
+    ],
+    "name": "DisputeFeePaid",
     "type": "event"
   },
   {
@@ -206,6 +216,23 @@ export const ESCROW_ABI = [
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "uint256", "name": "jobId", "type": "uint256" }
+    ],
+    "name": "TransferRequested",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "uint256", "name": "jobId", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "feeAmount", "type": "uint256" }
+    ],
+    "name": "PlatformFeePaid",
+    "type": "event"
+  },
+  {
     "inputs": [],
     "name": "MAX_DELIVERABLE_LENGTH",
     "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
@@ -222,6 +249,20 @@ export const ESCROW_ABI = [
   {
     "inputs": [],
     "name": "MAX_SKILLS",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "PLATFORM_FEE_PERCENT",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "DISPUTE_FEE",
     "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
     "stateMutability": "view",
     "type": "function"
@@ -342,6 +383,20 @@ export const ESCROW_ABI = [
     "name": "reputationRegistry",
     "outputs": [{ "internalType": "contract IReputationRegistry", "name": "", "type": "address" }],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "platformWallet",
+    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "uint256", "name": "jobId", "type": "uint256" }],
+    "name": "requestTransfer",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
