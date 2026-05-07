@@ -8,6 +8,7 @@ import { ActionButtons } from './ActionButtons';
 import { ApplyForJobForm } from './ApplyForJobForm';
 import { ApplicationsList } from './ApplicationsList';
 import { FreelancerDisputeResponse } from './FreelancerDisputeResponse';
+import { FreelancerTransferConfirmation } from './FreelancerTransferConfirmation';
 
 interface JobDetailProps {
   job: Job;
@@ -157,6 +158,11 @@ export function JobDetail({ job, onRefresh }: JobDetailProps) {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Submit Your Work</h3>
           <SubmitWorkForm jobId={job.id} jobDescription={job.description} onSuccess={onRefresh} />
         </div>
+      )}
+
+      {/* Freelancer Transfer Confirmation (SUBMITTED state) */}
+      {isFreelancer && stateLabel === 'SUBMITTED' && (
+        <FreelancerTransferConfirmation jobId={job.id} onConfirm={onRefresh} />
       )}
 
       {/* Freelancer Dispute Response (DISPUTED state) */}
