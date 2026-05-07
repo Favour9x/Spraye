@@ -36,25 +36,35 @@ export function ActionButtons({ jobId, role, state, onSuccess }: ActionButtonsPr
   
   // Load transfer state from localStorage
   useEffect(() => {
-    const transferData = localStorage.getItem(`transfer_request_${jobId}`);
-    if (transferData) {
-      try {
-        const data = JSON.parse(transferData);
-        setTransferRequested(data.requested || false);
-        setTransferConfirmed(data.confirmed || false);
-        setTransferProofLink(data.proofLink || '');
-        
-        // Auto-check checkboxes based on transfer state
-        if (data.requested) {
-          setCheckedContact(true);
+    const checkTransferState = () => {
+      const transferData = localStorage.getItem(`transfer_request_${jobId}`);
+      if (transferData) {
+        try {
+          const data = JSON.parse(transferData);
+          setTransferRequested(data.requested || false);
+          setTransferConfirmed(data.confirmed || false);
+          setTransferProofLink(data.proofLink || '');
+          
+          // Auto-check checkboxes based on transfer state
+          if (data.requested) {
+            setCheckedContact(true);
+          }
+          if (data.confirmed) {
+            setCheckedTransfer(true);
+          }
+        } catch (e) {
+          console.error('Failed to parse transfer data:', e);
         }
-        if (data.confirmed) {
-          setCheckedTransfer(true);
-        }
-      } catch (e) {
-        console.error('Failed to parse transfer data:', e);
       }
-    }
+    };
+
+    // Initial check
+    checkTransferState();
+
+    // Poll every 10 seconds for updates
+    const interval = setInterval(checkTransferState, 10000);
+
+    return () => clearInterval(interval);
   }, [jobId]);
   
   const allChecked = checkedDemo && checkedContact && checkedTransfer;
@@ -121,34 +131,58 @@ export function ActionButtons({ jobId, role, state, onSuccess }: ActionButtonsPr
       <div className="space-y-4">
         {!showDisputeForm ? (
           <>
-            {/* Step 1 - Request Repo Transfer */}
-            <div className="p-4 bg-blue-50 border-2 border-blue-300 rounded-lg">
-              <h4 className="font-semibold text-gray-900 text-sm mb-3">Step 1 — Request Repo Transfer</h4>
+            {/* Approval Checklist */}
+            <div className="p-4 bg-gray-50 border border-gray-300 rounded-lg space-y-3">
+              <h4 className="font-semibold text-gray-900 text-sm mb-3">Before you proceed, please confirm all of the following:</h4>
               
-              {!transferRequested ? (
-                <button
-                  onClick={handleRequestTransfer}
-                  className="w-full px-4 py-2 bg-[#0052FF] text-white font-medium rounded-lg hover:bg-[#0046DD] transition-colors"
-                >
-                  Request Repo Transfer from Freelancer
-                </button>
-              ) : !transferConfirmed ? (
-                <div className="flex items-center gap-2 text-green-700 bg-green-100 px-4 py-2 rounded-lg">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="font-medium">✓ Transfer Requested — waiting for freelancer to confirm</span>
+              {/* Checkbox 1 - Review Demo */}
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={checkedDemo}
+                  onChange={(e) => setCheckedDemo(e.target.checked)}
+                  className="mt-1 w-4 h-4 rounded border-gray-300 text-[#0052FF] focus:ring-[#0052FF]"
+                />
+                <span className="text-sm text-gray-700 group-hover:text-gray-900">
+                  I have reviewed the live demo link submitted by the freelancer
+                </span>
+              </label>
+
+              {/* Request Transfer Button - Only shows after first checkbox is checked */}
+              {checkedDemo && !transferRequested && (
+                <div className="ml-7 mt-2 mb-2">
+                  <button
+                    onClick={handleRequestTransfer}
+                    className="px-4 py-2 bg-[#0052FF] text-white font-medium rounded-lg hover:bg-[#0046DD] transition-colors text-sm"
+                  >
+                    Request Repo Transfer from Freelancer
+                  </button>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-green-700 bg-green-100 px-4 py-2 rounded-lg">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              )}
+
+              {/* Transfer Requested Status - Shows after button clicked */}
+              {transferRequested && !transferConfirmed && (
+                <div className="ml-7 mt-2 mb-2">
+                  <div className="flex items-center gap-2 text-green-700 bg-green-100 px-3 py-2 rounded-lg">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    <span className="font-medium">✓ Freelancer has confirmed the repo transfer</span>
+                    <span className="text-sm font-medium">✓ Transfer Requested — waiting for freelancer to confirm</span>
                   </div>
-                  <div className="p-3 bg-white border border-blue-300 rounded-lg">
-                    <p className="text-sm text-gray-700 mb-2">
+                </div>
+              )}
+
+              {/* Transfer Confirmed Status - Shows after freelancer confirms */}
+              {transferConfirmed && (
+                <div className="ml-7 mt-2 mb-2 space-y-2">
+                  <div className="flex items-center gap-2 text-green-700 bg-green-100 px-3 py-2 rounded-lg">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-sm font-medium">✓ Freelancer has confirmed the repo transfer</span>
+                  </div>
+                  <div className="p-3 bg-white border border-green-300 rounded-lg">
+                    <p className="text-xs text-gray-700 mb-1">
                       <a 
                         href={transferProofLink} 
                         target="_blank" 
@@ -164,24 +198,8 @@ export function ActionButtons({ jobId, role, state, onSuccess }: ActionButtonsPr
                   </div>
                 </div>
               )}
-            </div>
 
-            {/* Approval Checklist */}
-            <div className="p-4 bg-gray-50 border border-gray-300 rounded-lg space-y-3">
-              <h4 className="font-semibold text-gray-900 text-sm mb-3">Before you proceed, please confirm all of the following:</h4>
-              
-              <label className="flex items-start gap-3 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={checkedDemo}
-                  onChange={(e) => setCheckedDemo(e.target.checked)}
-                  className="mt-1 w-4 h-4 rounded border-gray-300 text-[#0052FF] focus:ring-[#0052FF]"
-                />
-                <span className="text-sm text-gray-700 group-hover:text-gray-900">
-                  I have reviewed the live demo link submitted by the freelancer
-                </span>
-              </label>
-
+              {/* Checkbox 2 - Contact Freelancer */}
               <label className="flex items-start gap-3 cursor-pointer group">
                 <input
                   type="checkbox"
@@ -196,6 +214,7 @@ export function ActionButtons({ jobId, role, state, onSuccess }: ActionButtonsPr
                 </span>
               </label>
 
+              {/* Checkbox 3 - Received Transfer */}
               <label className="flex items-start gap-3 cursor-pointer group">
                 <input
                   type="checkbox"

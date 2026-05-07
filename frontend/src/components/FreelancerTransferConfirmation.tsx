@@ -14,22 +14,33 @@ export function FreelancerTransferConfirmation({ jobId, onConfirm }: FreelancerT
   const [clientGithubUsername, setClientGithubUsername] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Load transfer state and client GitHub username from localStorage
+  // Poll for transfer state updates every 10 seconds
   useEffect(() => {
-    const transferData = localStorage.getItem(`transfer_request_${jobId}`);
-    if (transferData) {
-      try {
-        const data = JSON.parse(transferData);
-        setTransferRequested(data.requested || false);
-        setTransferConfirmed(data.confirmed || false);
-        setProofLink(data.proofLink || '');
-      } catch (e) {
-        console.error('Failed to parse transfer data:', e);
+    const checkTransferState = () => {
+      const transferData = localStorage.getItem(`transfer_request_${jobId}`);
+      if (transferData) {
+        try {
+          const data = JSON.parse(transferData);
+          setTransferRequested(data.requested || false);
+          setTransferConfirmed(data.confirmed || false);
+          setProofLink(data.proofLink || '');
+        } catch (e) {
+          console.error('Failed to parse transfer data:', e);
+        }
       }
-    }
+    };
 
-    // Try to get client GitHub username from job data
-    // This is a simplified approach - in production you'd fetch this from the job metadata
+    // Initial check
+    checkTransferState();
+
+    // Poll every 10 seconds
+    const interval = setInterval(checkTransferState, 10000);
+
+    return () => clearInterval(interval);
+  }, [jobId]);
+
+  // Load client GitHub username from job data
+  useEffect(() => {
     const jobKeys = Object.keys(localStorage).filter(key => key.startsWith('job_github_'));
     for (const key of jobKeys) {
       try {
@@ -42,7 +53,7 @@ export function FreelancerTransferConfirmation({ jobId, onConfirm }: FreelancerT
         console.error('Failed to parse job data:', e);
       }
     }
-  }, [jobId]);
+  }, []);
 
   const handleConfirmTransfer = () => {
     if (!proofLink.trim()) return;
@@ -71,6 +82,9 @@ export function FreelancerTransferConfirmation({ jobId, onConfirm }: FreelancerT
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-sm text-gray-700">
             Your work has been submitted. The client is reviewing your demo link. Once they request the GitHub repo transfer, you'll see instructions here.
+          </p>
+          <p className="text-xs text-gray-500 mt-2">
+            This page automatically checks for updates every 10 seconds.
           </p>
         </div>
       </div>
