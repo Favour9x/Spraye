@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAccount } from 'wagmi';
 import { useCreateJob } from '@/lib/hooks/useCreateJob';
 import { useJobCount } from '@/lib/hooks/useJobCount';
 import { TxNotification } from './TxNotification';
@@ -9,6 +10,7 @@ import { isValidAmount, parseUsdc } from '@/lib/utils';
 
 export function CreateJobForm() {
   const router = useRouter();
+  const { address } = useAccount();
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [skills, setSkills] = useState('');
@@ -75,14 +77,19 @@ export function CreateJobForm() {
     const amountInWei = parseUsdc(amount);
     const skillsArray = skills.split(',').map(s => s.trim()).filter(s => s);
     
-    // Store GitHub username in localStorage with job description for later retrieval
-    if (githubUsername.trim()) {
+    // Store GitHub username in localStorage with a unique key combining client address and description
+    // This ensures each job has its own GitHub username entry
+    if (githubUsername.trim() && address) {
       const jobData = {
         description,
         githubUsername: githubUsername.trim(),
+        clientAddress: address.toLowerCase(),
         timestamp: Date.now()
       };
-      localStorage.setItem(`job_github_${description.substring(0, 50)}`, JSON.stringify(jobData));
+      // Use a hash of the description + client address for uniqueness
+      const storageKey = `job_github_${address.toLowerCase()}_${description.substring(0, 50)}`;
+      localStorage.setItem(storageKey, JSON.stringify(jobData));
+      console.log('💾 Stored GitHub username for job:', storageKey);
     }
     
     await createJob(amountInWei, description, skillsArray);

@@ -169,24 +169,23 @@ export function JobDetail({ job, onRefresh }: JobDetailProps) {
       {isFreelancer && stateLabel === 'ASSIGNED' && (
         <div className="bg-white border border-gray-200 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Submit Your Work</h3>
-          <SubmitWorkForm jobId={job.id} jobDescription={job.description} onSuccess={onRefresh} />
+          <SubmitWorkForm 
+            jobId={job.id} 
+            jobDescription={job.description}
+            jobClientAddress={job.client}
+            onSuccess={onRefresh} 
+          />
         </div>
       )}
 
       {/* Freelancer Transfer Confirmation (SUBMITTED or TRANSFER_REQUESTED state) */}
       {isFreelancer && (stateLabel === 'SUBMITTED' || stateLabel === 'TRANSFER_REQUESTED') && (
-        <FreelancerTransferConfirmation jobId={job.id} onConfirm={onRefresh} />
-      )}
-
-      {/* DEBUG: Force show component if not showing */}
-      {!isFreelancer && stateLabel === 'SUBMITTED' && (
-        <div className="bg-red-50 border-2 border-red-500 rounded-lg p-4">
-          <p className="text-red-800 font-bold">⚠️ DEBUG: Component not showing because:</p>
-          <p className="text-sm text-red-700 mt-2">isFreelancer = {isFreelancer ? 'true' : 'false'}</p>
-          <p className="text-sm text-red-700">Connected wallet: {address || 'Not connected'}</p>
-          <p className="text-sm text-red-700">Freelancer address: {job.freelancer}</p>
-          <p className="text-sm text-red-700">Match: {address?.toLowerCase() === job.freelancer.toLowerCase() ? 'YES' : 'NO'}</p>
-        </div>
+        <FreelancerTransferConfirmation 
+          jobId={job.id} 
+          jobDescription={job.description}
+          jobClientAddress={job.client}
+          onConfirm={onRefresh} 
+        />
       )}
 
       {/* Freelancer Dispute Response (DISPUTED state) */}

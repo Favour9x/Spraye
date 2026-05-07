@@ -1,22 +1,27 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useReadContract } from 'wagmi';
+import { useReadContract, useQueryClient } from 'wagmi';
 import { ESCROW_CONTRACT } from '@/lib/contracts';
 
 interface FreelancerTransferConfirmationProps {
   jobId: bigint;
+  jobDescription: string;
+  jobClientAddress: string;
   onConfirm: () => void;
 }
 
-export function FreelancerTransferConfirmation({ jobId, onConfirm }: FreelancerTransferConfirmationProps) {
+export function FreelancerTransferConfirmation({ jobId, jobDescription, jobClientAddress, onConfirm }: FreelancerTransferConfirmationProps) {
   const [transferConfirmed, setTransferConfirmed] = useState(false);
   const [proofLink, setProofLink] = useState('');
   const [clientGithubUsername, setClientGithubUsername] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
 
+  // Get query client for cache invalidation
+  const queryClient = useQueryClient();
+
   // Read job state from blockchain with aggressive refetching
-  const { data: job, isError, isLoading, error } = useReadContract({
+  const { data: job, isError, isLoading, error, refetch } = useReadContract({
     ...ESCROW_CONTRACT,
     functionName: 'getJob',
     args: [jobId],
@@ -27,6 +32,26 @@ export function FreelancerTransferConfirmation({ jobId, onConfirm }: FreelancerT
       staleTime: 0, // Consider data stale immediately
     }
   });
+
+  // Force cache invalidation on component mount to ensure fresh data
+  useEffect(() => {
+    console.log('🔄 FreelancerTransferConfirmation: Invalidating cache on mount for jobId:', jobId.toString());
+    queryClient.invalidateQueries({ 
+      queryKey: [{ ...ESCROW_CONTRACT, functionName: 'getJob', args: [jobId] }] 
+    });
+  }, [jobId, queryClient]);
+
+  // Monitor job state changes and log transitions
+  useEffect(() => {
+    if (job) {
+      console.log('📊 FreelancerTransferConfirmation: Job state changed:', {
+        jobId: jobId.toString(),
+        currentState: job.state,
+        stateLabel: ['OPEN', 'ASSIGNED', 'SUBMITTED', 'TRANSFER_REQUESTED', 'APPROVED', 'DISPUTED', 'RESOLVED'][job.state],
+        timestamp: new Date().toLocaleTimeString()
+      });
+    }
+  }, [job?.state, jobId]);
 
   // Check if transfer was already confirmed in localStorage
   useEffect(() => {
@@ -42,21 +67,24 @@ export function FreelancerTransferConfirmation({ jobId, onConfirm }: FreelancerT
     }
   }, [jobId]);
 
-  // Load client GitHub username from job data
+  // Load client GitHub username from job data using client address and description
   useEffect(() => {
-    const jobKeys = Object.keys(localStorage).filter(key => key.startsWith('job_github_'));
-    for (const key of jobKeys) {
+    const storageKey = `job_github_${jobClientAddress.toLowerCase()}_${jobDescription.substring(0, 50)}`;
+    console.log('🔍 Looking for GitHub username with key:', storageKey);
+    
+    const storedData = localStorage.getItem(storageKey);
+    if (storedData) {
       try {
-        const jobData = JSON.parse(localStorage.getItem(key) || '{}');
-        if (jobData.githubUsername) {
-          setClientGithubUsername(jobData.githubUsername);
-          break;
-        }
+        const jobData = JSON.parse(storedData);
+        console.log('✅ Found GitHub username:', jobData.githubUsername);
+        setClientGithubUsername(jobData.githubUsername || '');
       } catch (e) {
         console.error('Failed to parse job data:', e);
       }
+    } else {
+      console.log('❌ No GitHub username found for this job');
     }
-  }, []);
+  }, [jobDescription, jobClientAddress]);
 
   const handleConfirmTransfer = () => {
     if (!proofLink.trim()) return;
@@ -93,18 +121,28 @@ export function FreelancerTransferConfirmation({ jobId, onConfirm }: FreelancerT
         stateLabel: ['OPEN', 'ASSIGNED', 'SUBMITTED', 'TRANSFER_REQUESTED', 'APPROVED', 'DISPUTED', 'RESOLVED'][job.state],
         transferRequested,
       } : 'No data',
-      timestamp: new Date().toLocaleTimeString()
+      timestamp: new Date().toLocaleTimeString(),
+      cacheStatus: 'Query executed'
     });
   }, [job, jobId, transferRequested, isLoading, isError, error]);
 
   // If transfer not requested yet, show waiting message
   if (!transferRequested) {
+    // Manual refresh handler using React Query cache invalidation
+    const handleManualRefresh = async () => {
+      console.log('🔄 Manual refresh triggered - invalidating cache and refetching');
+      await queryClient.invalidateQueries({ 
+        queryKey: [{ ...ESCROW_CONTRACT, functionName: 'getJob', args: [jobId] }] 
+      });
+      await refetch();
+    };
+
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Waiting for Client Review</h3>
           <button
-            onClick={() => window.location.reload()}
+            onClick={handleManualRefresh}
             className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
           >
             🔄 Refresh

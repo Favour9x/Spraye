@@ -7,29 +7,35 @@ import { TxNotification } from './TxNotification';
 interface SubmitWorkFormProps {
   jobId: bigint;
   jobDescription: string;
+  jobClientAddress: string;
   onSuccess: () => void;
 }
 
-export function SubmitWorkForm({ jobId, jobDescription, onSuccess }: SubmitWorkFormProps) {
+export function SubmitWorkForm({ jobId, jobDescription, jobClientAddress, onSuccess }: SubmitWorkFormProps) {
   const [deliverable, setDeliverable] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [clientGithubUsername, setClientGithubUsername] = useState<string>('');
 
   const { submitWork, status, txHash, error: txError } = useSubmitWork();
 
-  // Retrieve client's GitHub username from localStorage
+  // Retrieve client's GitHub username from localStorage using client address and job description
   useEffect(() => {
-    const jobKey = `job_github_${jobDescription.substring(0, 50)}`;
-    const storedData = localStorage.getItem(jobKey);
+    const storageKey = `job_github_${jobClientAddress.toLowerCase()}_${jobDescription.substring(0, 50)}`;
+    console.log('🔍 Looking for GitHub username with key:', storageKey);
+    
+    const storedData = localStorage.getItem(storageKey);
     if (storedData) {
       try {
         const jobData = JSON.parse(storedData);
+        console.log('✅ Found GitHub username:', jobData.githubUsername);
         setClientGithubUsername(jobData.githubUsername || '');
       } catch (e) {
         console.error('Failed to parse job data:', e);
       }
+    } else {
+      console.log('❌ No GitHub username found for this job');
     }
-  }, [jobDescription]);
+  }, [jobDescription, jobClientAddress]);
 
   const validate = (): boolean => {
     if (!deliverable.trim()) {
