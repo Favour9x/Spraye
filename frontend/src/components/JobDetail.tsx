@@ -35,6 +35,25 @@ export function JobDetail({ job, onRefresh }: JobDetailProps) {
 
   return (
     <div className="space-y-6">
+      {/* Persistent Info Notice for Active Jobs */}
+      {(stateLabel === 'ASSIGNED' || stateLabel === 'SUBMITTED' || stateLabel === 'DISPUTED') && (
+        <div className="p-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg">
+          <div className="flex gap-3">
+            <svg className="w-6 h-6 text-yellow-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div className="space-y-2 text-sm">
+              <p className="font-semibold text-gray-900">Important Information</p>
+              <ul className="space-y-1 text-gray-700">
+                <li>• The original job description is the source of truth for all disputes on ArcHire.</li>
+                <li>• <strong>Clients:</strong> do not approve until you have received and verified the GitHub repo transfer.</li>
+                <li>• <strong>Freelancers:</strong> upload your transfer confirmation screenshot to imgur.com and save the link as proof before the job is marked complete.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Job Header */}
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <div className="flex items-start justify-between mb-4">

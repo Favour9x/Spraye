@@ -18,6 +18,7 @@ export function Navigation() {
     { href: '/jobs', label: 'Browse Jobs' },
     { href: '/my-jobs', label: 'My Jobs' },
     { href: '/profile', label: 'Profile' },
+    { href: '/how-it-works', label: 'How It Works' },
   ];
 
   if (isArbitrator) {
