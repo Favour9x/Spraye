@@ -47,18 +47,20 @@ contract FreelancerMarketplace {
     error ApplicationNotFound(uint256 jobId, address freelancer);
     error TransferFailed();
     error TooManySkills(uint256 provided, uint256 max);
+    error InsufficientDisputeFee(uint256 provided, uint256 required);
 
     // ══════════════════════════════════════════════════════════════════════════════
     // TYPES
     // ══════════════════════════════════════════════════════════════════════════════
 
     enum JobState {
-        OPEN,       // 0 — Job posted, accepting applications
-        ASSIGNED,   // 1 — Freelancer selected, work in progress
-        SUBMITTED,  // 2 — Freelancer submitted deliverable
-        APPROVED,   // 3 — Client approved, funds released to freelancer
-        DISPUTED,   // 4 — Client raised dispute, funds locked
-        RESOLVED    // 5 — Arbitrator resolved, funds released to winner
+        OPEN,               // 0 — Job posted, accepting applications
+        ASSIGNED,           // 1 — Freelancer selected, work in progress
+        SUBMITTED,          // 2 — Freelancer submitted deliverable
+        TRANSFER_REQUESTED, // 3 — Client requested GitHub repo transfer
+        APPROVED,           // 4 — Client approved, funds released to freelancer
+        DISPUTED,           // 5 — Dispute raised, funds locked
+        RESOLVED            // 6 — Arbitrator resolved, funds released to winner
     }
 
     struct Job {
@@ -107,15 +109,29 @@ contract FreelancerMarketplace {
         string deliverable
     );
 
+    event TransferRequested(
+        uint256 indexed jobId
+    );
+
     event JobApproved(
         uint256 indexed jobId,
         address indexed freelancer,
         uint256 amount
     );
 
+    event PlatformFeePaid(
+        uint256 indexed jobId,
+        uint256 feeAmount
+    );
+
     event DisputeRaised(
         uint256 indexed jobId,
-        address indexed client
+        address indexed raiser
+    );
+
+    event DisputeFeePaid(
+        uint256 indexed jobId,
+        address indexed payer
     );
 
     event DisputeResolved(
@@ -142,6 +158,13 @@ contract FreelancerMarketplace {
     uint256 public constant MAX_DELIVERABLE_LENGTH = 2048;
     uint256 public constant MAX_SKILLS = 10;
 
+    // Platform fee: 5% deducted from freelancer payment
+    uint256 public constant PLATFORM_FEE_PERCENT = 5;
+    address public immutable platformWallet;
+
+    // Dispute fee: 1 USDC (6 decimals)
+    uint256 public constant DISPUTE_FEE = 1_000_000;
+
     // ══════════════════════════════════════════════════════════════════════════════
     // CONSTRUCTOR
     // ══════════════════════════════════════════════════════════════════════════════
@@ -149,15 +172,18 @@ contract FreelancerMarketplace {
     constructor(
         address _arbitrator,
         address _usdc,
-        address _reputationRegistry
+        address _reputationRegistry,
+        address _platformWallet
     ) {
         if (_arbitrator == address(0)) revert ZeroAddress();
         if (_usdc == address(0)) revert ZeroAddress();
         if (_reputationRegistry == address(0)) revert ZeroAddress();
+        if (_platformWallet == address(0)) revert ZeroAddress();
 
         arbitrator = _arbitrator;
         usdc = IERC20(_usdc);
         reputationRegistry = IReputationRegistry(_reputationRegistry);
+        platformWallet = _platformWallet;
     }
 
     // ══════════════════════════════════════════════════════════════════════════════
@@ -307,8 +333,30 @@ contract FreelancerMarketplace {
     }
 
     /**
-     * @notice Approve submitted work and release USDC to freelancer
-     * @dev Only callable by client. Attempts ERC-8004 reputation update
+     * @notice Request GitHub repo transfer from freelancer
+     * @dev Only callable by client when job is in SUBMITTED state
+     * @param jobId The job to request transfer for
+     */
+    function requestTransfer(uint256 jobId) external {
+        if (jobId >= _jobCount) revert JobNotFound(jobId);
+
+        Job storage job = _jobs[jobId];
+
+        if (job.state != JobState.SUBMITTED) {
+            revert InvalidState(jobId, job.state, JobState.SUBMITTED);
+        }
+        if (msg.sender != job.client) {
+            revert NotClient(msg.sender, job.client);
+        }
+
+        job.state = JobState.TRANSFER_REQUESTED;
+
+        emit TransferRequested(jobId);
+    }
+
+    /**
+     * @notice Approve submitted work and release USDC to freelancer (minus 5% platform fee)
+     * @dev Only callable by client. Can be called from SUBMITTED or TRANSFER_REQUESTED state
      * @param jobId The job to approve
      */
     function approveWork(uint256 jobId) external {
@@ -316,7 +364,8 @@ contract FreelancerMarketplace {
 
         Job storage job = _jobs[jobId];
 
-        if (job.state != JobState.SUBMITTED) {
+        // Allow approval from either SUBMITTED or TRANSFER_REQUESTED state
+        if (job.state != JobState.SUBMITTED && job.state != JobState.TRANSFER_REQUESTED) {
             revert InvalidState(jobId, job.state, JobState.SUBMITTED);
         }
         if (msg.sender != job.client) {
@@ -325,8 +374,17 @@ contract FreelancerMarketplace {
 
         job.state = JobState.APPROVED;
 
-        // Transfer USDC to freelancer
-        if (!usdc.transfer(job.freelancer, job.amount)) {
+        // Calculate platform fee (5% of total amount)
+        uint256 platformFee = (job.amount * PLATFORM_FEE_PERCENT) / 100;
+        uint256 freelancerAmount = job.amount - platformFee;
+
+        // Transfer platform fee to platform wallet
+        if (!usdc.transfer(platformWallet, platformFee)) {
+            revert TransferFailed();
+        }
+
+        // Transfer remaining amount to freelancer
+        if (!usdc.transfer(job.freelancer, freelancerAmount)) {
             revert TransferFailed();
         }
 
@@ -335,12 +393,13 @@ contract FreelancerMarketplace {
             0, 1, 0, "marketplace", "", "", "", bytes32(0)
         ) {} catch {}
 
-        emit JobApproved(jobId, job.freelancer, job.amount);
+        emit PlatformFeePaid(jobId, platformFee);
+        emit JobApproved(jobId, job.freelancer, freelancerAmount);
     }
 
     /**
      * @notice Raise a dispute on submitted work
-     * @dev Only callable by client
+     * @dev Callable by client or freelancer. Requires 1 USDC dispute fee
      * @param jobId The job to dispute
      */
     function raiseDispute(uint256 jobId) external {
@@ -348,15 +407,24 @@ contract FreelancerMarketplace {
 
         Job storage job = _jobs[jobId];
 
-        if (job.state != JobState.SUBMITTED) {
+        // Allow dispute from SUBMITTED or TRANSFER_REQUESTED state
+        if (job.state != JobState.SUBMITTED && job.state != JobState.TRANSFER_REQUESTED) {
             revert InvalidState(jobId, job.state, JobState.SUBMITTED);
         }
-        if (msg.sender != job.client) {
+
+        // Verify caller is either client or freelancer
+        if (msg.sender != job.client && msg.sender != job.freelancer) {
             revert NotClient(msg.sender, job.client);
+        }
+
+        // Collect 1 USDC dispute fee from caller
+        if (!usdc.transferFrom(msg.sender, platformWallet, DISPUTE_FEE)) {
+            revert TransferFailed();
         }
 
         job.state = JobState.DISPUTED;
 
+        emit DisputeFeePaid(jobId, msg.sender);
         emit DisputeRaised(jobId, msg.sender);
     }
 
@@ -384,14 +452,29 @@ contract FreelancerMarketplace {
 
         if (favorFreelancer) {
             recipient = job.freelancer;
-            if (!usdc.transfer(job.freelancer, job.amount)) {
+            
+            // Calculate platform fee (5% of total amount)
+            uint256 platformFee = (job.amount * PLATFORM_FEE_PERCENT) / 100;
+            uint256 freelancerAmount = job.amount - platformFee;
+
+            // Transfer platform fee
+            if (!usdc.transfer(platformWallet, platformFee)) {
                 revert TransferFailed();
             }
+
+            // Transfer remaining to freelancer
+            if (!usdc.transfer(job.freelancer, freelancerAmount)) {
+                revert TransferFailed();
+            }
+
+            emit PlatformFeePaid(jobId, platformFee);
+
             try reputationRegistry.giveFeedback(
                 0, 1, 0, "marketplace", "", "", "", bytes32(0)
             ) {} catch {}
         } else {
             recipient = job.client;
+            // Full refund to client (no platform fee)
             if (!usdc.transfer(job.client, job.amount)) {
                 revert TransferFailed();
             }
