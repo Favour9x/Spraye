@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useReadContract, useQueryClient } from 'wagmi';
+import { useReadContract } from 'wagmi';
+import { useQueryClient } from '@tanstack/react-query';
 import { ESCROW_CONTRACT } from '@/lib/contracts';
 import { useGithubUsername } from '@/lib/hooks/useGithubUsername';
 
