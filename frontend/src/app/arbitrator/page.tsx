@@ -1,21 +1,26 @@
 'use client';
 
-import { useAccount } from 'wagmi';
+import { useAccount, useReadContract } from 'wagmi';
 import { useJobCount } from '@/lib/hooks/useJobCount';
 import { useJob } from '@/lib/hooks/useJob';
 import { useResolveDispute } from '@/lib/hooks/useResolveDispute';
+import { useSetPlatformFee } from '@/lib/hooks/useSetPlatformFee';
 import { formatAddress, formatUsdc } from '@/lib/utils';
 import { ARBITRATOR_ADDRESS } from '@/constants';
+import { ESCROW_CONTRACT } from '@/lib/contracts';
 import { useState, useEffect } from 'react';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
+
+const PLATFORM_WALLET_ADDRESS = '0x06ca85E556d53bb2A54a99D8cA546Fe927beB689';
 
 export default function ArbitratorPage() {
   const [mounted, setMounted] = useState(false);
   const { address, isConnected } = useAccount();
   const { count } = useJobCount();
   const isArbitrator = address?.toLowerCase() === ARBITRATOR_ADDRESS.toLowerCase();
+  const isPlatformWallet = address?.toLowerCase() === PLATFORM_WALLET_ADDRESS.toLowerCase();
 
   useEffect(() => {
     setMounted(true);
@@ -68,6 +73,13 @@ export default function ArbitratorPage() {
           <h1 className="text-3xl font-bold text-white mb-2">Arbitrator Dashboard</h1>
           <p className="text-gray-400">Review and resolve disputed jobs</p>
         </div>
+
+        {/* Platform Fee Adjustment (only for platform wallet) */}
+        {isPlatformWallet && (
+          <div className="mb-8">
+            <PlatformFeeAdjustment />
+          </div>
+        )}
 
         {/* Disputed Jobs */}
         <div className="space-y-4">
@@ -187,6 +199,94 @@ function DisputedJobCard({ jobId }: { jobId: bigint }) {
       {status === 'success' && (
         <div className="mt-4 p-4 bg-green-900/20 border border-green-700 rounded-lg">
           <p className="text-green-300 text-sm">Dispute resolved successfully!</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PlatformFeeAdjustment() {
+  const [newFee, setNewFee] = useState<string>('');
+  const { setPlatformFee, status, error, isConfirmed } = useSetPlatformFee();
+
+  // Read current platform fee
+  const { data: currentFee, refetch } = useReadContract({
+    ...ESCROW_CONTRACT,
+    functionName: 'platformFeePercent',
+  });
+
+  // Refetch when transaction is confirmed
+  useEffect(() => {
+    if (isConfirmed) {
+      refetch();
+      setNewFee('');
+    }
+  }, [isConfirmed, refetch]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const feeValue = parseInt(newFee);
+    if (isNaN(feeValue) || feeValue < 0 || feeValue > 100) {
+      alert('Please enter a valid fee percentage between 0 and 100');
+      return;
+    }
+
+    await setPlatformFee(feeValue);
+  };
+
+  return (
+    <div className="bg-black border border-[#0052FF] rounded-lg p-6">
+      <h2 className="text-xl font-bold text-white mb-4">Platform Fee Adjustment</h2>
+      <p className="text-gray-400 mb-6">Only the platform wallet can adjust the platform fee percentage</p>
+
+      {/* Current Fee Display */}
+      <div className="mb-6">
+        <h3 className="text-sm font-medium text-gray-400 mb-2">Current Platform Fee</h3>
+        <div className="text-3xl font-bold text-[#0052FF]">
+          {currentFee !== undefined ? `${currentFee.toString()}%` : 'Loading...'}
+        </div>
+      </div>
+
+      {/* Fee Adjustment Form */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="newFee" className="block text-sm font-medium text-gray-400 mb-2">
+            New Fee Percentage (0-100)
+          </label>
+          <input
+            type="number"
+            id="newFee"
+            min="0"
+            max="100"
+            value={newFee}
+            onChange={(e) => setNewFee(e.target.value)}
+            placeholder="Enter new fee percentage"
+            className="w-full px-4 py-3 bg-gray-900 border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#0052FF]"
+            disabled={status === 'pending'}
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={status === 'pending' || !newFee}
+          className="w-full px-6 py-3 bg-[#0052FF] text-white rounded-lg hover:bg-[#0046DD] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+        >
+          {status === 'pending' ? 'Updating...' : 'Update Platform Fee'}
+        </button>
+      </form>
+
+      {/* Error Display */}
+      {error && (
+        <div className="mt-4 p-4 bg-red-900/20 border border-red-700 rounded-lg">
+          <p className="text-red-300 text-sm">{error}</p>
+        </div>
+      )}
+
+      {/* Success Display */}
+      {status === 'success' && (
+        <div className="mt-4 p-4 bg-green-900/20 border border-green-700 rounded-lg">
+          <p className="text-green-300 text-sm">Platform fee updated successfully!</p>
         </div>
       )}
     </div>

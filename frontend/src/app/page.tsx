@@ -71,8 +71,8 @@ export default function Home() {
                 <div className="text-sm text-gray-400">Secure Escrow</div>
               </div>
               <div className="glass-card p-6 rounded-lg">
-                <div className="text-3xl font-bold text-white mb-2">0%</div>
-                <div className="text-sm text-gray-400">Platform Fees</div>
+                <div className="text-3xl font-bold text-white mb-2">5%</div>
+                <div className="text-sm text-gray-400">Platform Fee</div>
               </div>
               <div className="glass-card p-6 rounded-lg">
                 <div className="text-3xl font-bold text-white mb-2">Onchain</div>
@@ -274,8 +274,8 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">No Platform Fees</h3>
-              <p className="text-gray-400">Keep 100% of your earnings with zero platform fees</p>
+              <h3 className="text-xl font-bold text-white mb-2">Transparent Pricing</h3>
+              <p className="text-gray-400">5% platform fee — transparent, fair, and built onchain</p>
             </motion.div>
           </div>
         </div>
