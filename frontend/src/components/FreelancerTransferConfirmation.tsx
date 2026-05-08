@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useReadContract, useQueryClient } from 'wagmi';
 import { ESCROW_CONTRACT } from '@/lib/contracts';
+import { useGithubUsername } from '@/lib/hooks/useGithubUsername';
 
 interface FreelancerTransferConfirmationProps {
   jobId: bigint;
@@ -14,11 +15,13 @@ interface FreelancerTransferConfirmationProps {
 export function FreelancerTransferConfirmation({ jobId, jobDescription, jobClientAddress, onConfirm }: FreelancerTransferConfirmationProps) {
   const [transferConfirmed, setTransferConfirmed] = useState(false);
   const [proofLink, setProofLink] = useState('');
-  const [clientGithubUsername, setClientGithubUsername] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
 
   // Get query client for cache invalidation
   const queryClient = useQueryClient();
+
+  // Fetch GitHub username from contract
+  const { githubUsername: clientGithubUsername, isLoading: loadingGithub } = useGithubUsername(jobId);
 
   // Read job state from blockchain with aggressive refetching
   const { data: job, isError, isLoading, error, refetch } = useReadContract({
@@ -66,25 +69,6 @@ export function FreelancerTransferConfirmation({ jobId, jobDescription, jobClien
       }
     }
   }, [jobId]);
-
-  // Load client GitHub username from job data using client address and description
-  useEffect(() => {
-    const storageKey = `job_github_${jobClientAddress.toLowerCase()}_${jobDescription.substring(0, 50)}`;
-    console.log('🔍 Looking for GitHub username with key:', storageKey);
-    
-    const storedData = localStorage.getItem(storageKey);
-    if (storedData) {
-      try {
-        const jobData = JSON.parse(storedData);
-        console.log('✅ Found GitHub username:', jobData.githubUsername);
-        setClientGithubUsername(jobData.githubUsername || '');
-      } catch (e) {
-        console.error('Failed to parse job data:', e);
-      }
-    } else {
-      console.log('❌ No GitHub username found for this job');
-    }
-  }, [jobDescription, jobClientAddress]);
 
   const handleConfirmTransfer = () => {
     if (!proofLink.trim()) return;
@@ -221,7 +205,11 @@ export function FreelancerTransferConfirmation({ jobId, jobDescription, jobClien
               <span className="font-bold text-[#0052FF]">2.</span>
               <div className="flex-1">
                 <span>Enter the client GitHub username shown below:</span>
-                {clientGithubUsername ? (
+                {loadingGithub ? (
+                  <div className="mt-2 p-3 bg-gray-100 border border-gray-300 rounded-lg">
+                    <p className="text-sm text-gray-600">Loading GitHub username...</p>
+                  </div>
+                ) : clientGithubUsername && clientGithubUsername.trim() !== '' ? (
                   <div className="mt-2 p-3 bg-blue-50 border-2 border-blue-300 rounded-lg">
                     <p className="text-xs text-gray-600 mb-1">Client GitHub Username:</p>
                     <p className="text-xl font-bold text-blue-600">@{clientGithubUsername}</p>

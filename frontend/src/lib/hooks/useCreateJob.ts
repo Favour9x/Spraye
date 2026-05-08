@@ -16,7 +16,7 @@ export function useCreateJob() {
   const { writeContractAsync } = useWriteContract();
 
   const createJob = useCallback(
-    async (amount: bigint, description: string, requiredSkills: string[]) => {
+    async (amount: bigint, description: string, requiredSkills: string[], githubUsername: string, deadline: bigint) => {
       if (!address) {
         setError('Wallet not connected');
         setStatus('error');
@@ -29,15 +29,6 @@ export function useCreateJob() {
         return;
       }
 
-      // Debug logging
-      console.log('🚀 Creating job with:');
-      console.log('  Amount:', amount.toString());
-      console.log('  Description:', description);
-      console.log('  Skills:', requiredSkills);
-      console.log('  USDC Contract:', USDC_CONTRACT.address);
-      console.log('  Escrow Contract:', ESCROW_CONTRACT.address);
-      console.log('  User Address:', address);
-
       try {
         setStatus('checking');
         setError(null);
@@ -45,7 +36,6 @@ export function useCreateJob() {
         setJobId(null);
 
         // Step 1: Approve USDC
-        console.log('📝 Step 1: Approving USDC...');
         setStatus('approving');
         
         let approveTxHash;
@@ -55,13 +45,10 @@ export function useCreateJob() {
             functionName: 'approve',
             args: [ESCROW_CONTRACT.address, amount],
           });
-          console.log('✅ Approval transaction sent:', approveTxHash);
         } catch (approveError) {
-          console.error('❌ Approval failed:', approveError);
           throw approveError;
         }
         
-        console.log('⏳ Waiting for approval confirmation...');
         setStatus('waiting-approval');
         
         // Wait for approval transaction receipt
@@ -69,11 +56,8 @@ export function useCreateJob() {
           hash: approveTxHash,
           confirmations: 1,
         });
-        
-        console.log('✅ Approval confirmed! Block:', approvalReceipt.blockNumber);
 
-        // Step 2: Create job
-        console.log('📝 Step 2: Creating job...');
+        // Step 2: Create job with new parameters
         setStatus('pending');
         
         let createTxHash;
@@ -81,15 +65,12 @@ export function useCreateJob() {
           createTxHash = await writeContractAsync({
             ...ESCROW_CONTRACT,
             functionName: 'createJob',
-            args: [amount, description, requiredSkills],
+            args: [amount, description, requiredSkills, githubUsername, deadline],
           });
-          console.log('✅ Job creation transaction sent:', createTxHash);
         } catch (createError) {
-          console.error('❌ Job creation failed:', createError);
           throw createError;
         }
 
-        console.log('⏳ Waiting for job creation confirmation...');
         setStatus('waiting-creation');
         
         // Wait for job creation transaction receipt
@@ -98,16 +79,11 @@ export function useCreateJob() {
           confirmations: 1,
         });
         
-        console.log('✅ Job created successfully! Block:', creationReceipt.blockNumber);
-        console.log('📋 Transaction receipt:', creationReceipt);
-        
         setTxHash(createTxHash);
         setStatus('success');
 
       } catch (err) {
-        console.error('❌ Error in createJob:', err);
         const parsedError = parseContractError(err);
-        console.error('❌ Parsed error:', parsedError);
         if (parsedError === 'CANCELLED') {
           setStatus('idle');
         } else {

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSubmitWork } from '@/lib/hooks/useSubmitWork';
+import { useGithubUsername } from '@/lib/hooks/useGithubUsername';
 import { TxNotification } from './TxNotification';
 
 interface SubmitWorkFormProps {
@@ -14,28 +15,9 @@ interface SubmitWorkFormProps {
 export function SubmitWorkForm({ jobId, jobDescription, jobClientAddress, onSuccess }: SubmitWorkFormProps) {
   const [deliverable, setDeliverable] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [clientGithubUsername, setClientGithubUsername] = useState<string>('');
 
   const { submitWork, status, txHash, error: txError } = useSubmitWork();
-
-  // Retrieve client's GitHub username from localStorage using client address and job description
-  useEffect(() => {
-    const storageKey = `job_github_${jobClientAddress.toLowerCase()}_${jobDescription.substring(0, 50)}`;
-    console.log('🔍 Looking for GitHub username with key:', storageKey);
-    
-    const storedData = localStorage.getItem(storageKey);
-    if (storedData) {
-      try {
-        const jobData = JSON.parse(storedData);
-        console.log('✅ Found GitHub username:', jobData.githubUsername);
-        setClientGithubUsername(jobData.githubUsername || '');
-      } catch (e) {
-        console.error('Failed to parse job data:', e);
-      }
-    } else {
-      console.log('❌ No GitHub username found for this job');
-    }
-  }, [jobDescription, jobClientAddress]);
+  const { githubUsername: clientGithubUsername, isLoading: loadingGithub } = useGithubUsername(jobId);
 
   const validate = (): boolean => {
     if (!deliverable.trim()) {
@@ -65,7 +47,11 @@ export function SubmitWorkForm({ jobId, jobDescription, jobClientAddress, onSucc
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Client GitHub Username Display */}
-      {clientGithubUsername && (
+      {loadingGithub ? (
+        <div className="p-4 bg-gray-900/50 border border-gray-700 rounded-lg">
+          <p className="text-sm text-gray-400">Loading client GitHub username...</p>
+        </div>
+      ) : clientGithubUsername && clientGithubUsername.trim() !== '' ? (
         <div className="p-4 bg-blue-900/20 border-2 border-blue-500 rounded-lg">
           <p className="text-sm font-medium text-gray-300 mb-1">Client GitHub Username:</p>
           <p className="text-xl font-bold text-blue-400">@{clientGithubUsername}</p>
@@ -73,7 +59,7 @@ export function SubmitWorkForm({ jobId, jobDescription, jobClientAddress, onSucc
             Use this username when transferring the GitHub repo after the client requests it.
           </p>
         </div>
-      )}
+      ) : null}
 
       <div>
         <label htmlFor="deliverable" className="block text-sm font-medium text-gray-300 mb-2">

@@ -11,6 +11,7 @@ interface ApplyForJobFormProps {
 
 export function ApplyForJobForm({ jobId, onSuccess }: ApplyForJobFormProps) {
   const [proposal, setProposal] = useState('');
+  const [estimatedDelivery, setEstimatedDelivery] = useState('1 week'); // Default value
   const [error, setError] = useState<string | null>(null);
 
   const { applyForJob, status, txHash, error: contractError } = useApplyForJob();
@@ -23,11 +24,17 @@ export function ApplyForJobForm({ jobId, onSuccess }: ApplyForJobFormProps) {
       return;
     }
 
+    if (!estimatedDelivery) {
+      setError('Estimated delivery time is required');
+      return;
+    }
+
     setError(null);
-    await applyForJob(jobId, proposal);
+    await applyForJob(jobId, proposal, estimatedDelivery);
 
     if (status === 'success') {
       setProposal('');
+      setEstimatedDelivery('1 week');
       onSuccess();
     }
   };
@@ -52,6 +59,31 @@ export function ApplyForJobForm({ jobId, onSuccess }: ApplyForJobFormProps) {
           } ${isDisabled ? 'bg-gray-900 cursor-not-allowed' : ''}`}
         />
         {error && <p className="mt-1 text-sm text-red-400">{error}</p>}
+      </div>
+
+      <div>
+        <label htmlFor="estimatedDelivery" className="block text-sm font-medium text-gray-300 mb-2">
+          Estimated Delivery Time <span className="text-red-400">*</span>
+        </label>
+        <select
+          id="estimatedDelivery"
+          value={estimatedDelivery}
+          onChange={(e) => setEstimatedDelivery(e.target.value)}
+          disabled={isDisabled}
+          className={`w-full px-4 py-2 bg-black border border-gray-700 rounded-lg focus:ring-2 focus:ring-[#0052FF] focus:border-transparent text-white ${
+            isDisabled ? 'bg-gray-900 cursor-not-allowed' : ''
+          }`}
+        >
+          <option value="1 day">1 day</option>
+          <option value="3 days">3 days</option>
+          <option value="1 week">1 week</option>
+          <option value="2 weeks">2 weeks</option>
+          <option value="1 month">1 month</option>
+          <option value="More than 1 month">More than 1 month</option>
+        </select>
+        <p className="mt-1 text-xs text-gray-500">
+          How long will it take you to complete this project?
+        </p>
       </div>
 
       <button

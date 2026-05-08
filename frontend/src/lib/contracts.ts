@@ -1,11 +1,6 @@
 import { FREELANCER_ESCROW_ADDRESS, USDC_ADDRESS } from '@/constants';
 
-// Debug logging
-if (typeof window !== 'undefined') {
-  console.log('📝 Contract Addresses Loaded:');
-  console.log('  FREELANCER_ESCROW_ADDRESS:', FREELANCER_ESCROW_ADDRESS);
-  console.log('  USDC_ADDRESS:', USDC_ADDRESS);
-}
+// Contract addresses loaded from constants
 
 // FreelancerMarketplace ABI (generated from Solidity contract)
 export const ESCROW_ABI = [
@@ -137,6 +132,26 @@ export const ESCROW_ABI = [
     "type": "error"
   },
   {
+    "inputs": [
+      { "internalType": "uint256", "name": "feePercent", "type": "uint256" }
+    ],
+    "name": "InvalidFeePercent",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ProofLinkEmpty",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "caller", "type": "address" },
+      { "internalType": "address", "name": "expected", "type": "address" }
+    ],
+    "name": "NotPlatformWallet",
+    "type": "error"
+  },
+  {
     "anonymous": false,
     "inputs": [
       { "indexed": true, "internalType": "uint256", "name": "jobId", "type": "uint256" },
@@ -179,7 +194,8 @@ export const ESCROW_ABI = [
     "inputs": [
       { "indexed": true, "internalType": "uint256", "name": "jobId", "type": "uint256" },
       { "indexed": true, "internalType": "address", "name": "freelancer", "type": "address" },
-      { "indexed": false, "internalType": "string", "name": "proposal", "type": "string" }
+      { "indexed": false, "internalType": "string", "name": "proposal", "type": "string" },
+      { "indexed": false, "internalType": "string", "name": "estimatedDelivery", "type": "string" }
     ],
     "name": "JobApplicationSubmitted",
     "type": "event"
@@ -201,7 +217,9 @@ export const ESCROW_ABI = [
       { "indexed": true, "internalType": "address", "name": "client", "type": "address" },
       { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" },
       { "indexed": false, "internalType": "string", "name": "description", "type": "string" },
-      { "indexed": false, "internalType": "string[]", "name": "requiredSkills", "type": "string[]" }
+      { "indexed": false, "internalType": "string[]", "name": "requiredSkills", "type": "string[]" },
+      { "indexed": false, "internalType": "string", "name": "githubUsername", "type": "string" },
+      { "indexed": false, "internalType": "uint256", "name": "deadline", "type": "uint256" }
     ],
     "name": "JobCreated",
     "type": "event"
@@ -227,9 +245,28 @@ export const ESCROW_ABI = [
     "anonymous": false,
     "inputs": [
       { "indexed": true, "internalType": "uint256", "name": "jobId", "type": "uint256" },
+      { "indexed": true, "internalType": "address", "name": "freelancer", "type": "address" },
+      { "indexed": false, "internalType": "string", "name": "imgurLink", "type": "string" }
+    ],
+    "name": "TransferConfirmed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "uint256", "name": "jobId", "type": "uint256" },
       { "indexed": false, "internalType": "uint256", "name": "feeAmount", "type": "uint256" }
     ],
     "name": "PlatformFeePaid",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": false, "internalType": "uint256", "name": "oldFeePercent", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "newFeePercent", "type": "uint256" }
+    ],
+    "name": "PlatformFeeUpdated",
     "type": "event"
   },
   {
@@ -262,6 +299,13 @@ export const ESCROW_ABI = [
   },
   {
     "inputs": [],
+    "name": "platformFeePercent",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "DISPUTE_FEE",
     "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
     "stateMutability": "view",
@@ -270,7 +314,8 @@ export const ESCROW_ABI = [
   {
     "inputs": [
       { "internalType": "uint256", "name": "jobId", "type": "uint256" },
-      { "internalType": "string", "name": "proposal", "type": "string" }
+      { "internalType": "string", "name": "proposal", "type": "string" },
+      { "internalType": "string", "name": "estimatedDelivery", "type": "string" }
     ],
     "name": "applyForJob",
     "outputs": [],
@@ -305,7 +350,9 @@ export const ESCROW_ABI = [
     "inputs": [
       { "internalType": "uint256", "name": "amount", "type": "uint256" },
       { "internalType": "string", "name": "description", "type": "string" },
-      { "internalType": "string[]", "name": "requiredSkills", "type": "string[]" }
+      { "internalType": "string[]", "name": "requiredSkills", "type": "string[]" },
+      { "internalType": "string", "name": "githubUsername", "type": "string" },
+      { "internalType": "uint256", "name": "deadline", "type": "uint256" }
     ],
     "name": "createJob",
     "outputs": [{ "internalType": "uint256", "name": "jobId", "type": "uint256" }],
@@ -323,7 +370,8 @@ export const ESCROW_ABI = [
         "components": [
           { "internalType": "address", "name": "freelancer", "type": "address" },
           { "internalType": "string", "name": "proposal", "type": "string" },
-          { "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+          { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
+          { "internalType": "string", "name": "estimatedDelivery", "type": "string" }
         ],
         "internalType": "struct FreelancerMarketplace.Application",
         "name": "",
@@ -354,7 +402,8 @@ export const ESCROW_ABI = [
           { "internalType": "string", "name": "description", "type": "string" },
           { "internalType": "string[]", "name": "requiredSkills", "type": "string[]" },
           { "internalType": "string", "name": "deliverable", "type": "string" },
-          { "internalType": "uint256", "name": "applicationCount", "type": "uint256" }
+          { "internalType": "uint256", "name": "applicationCount", "type": "uint256" },
+          { "internalType": "uint256", "name": "deadline", "type": "uint256" }
         ],
         "internalType": "struct FreelancerMarketplace.Job",
         "name": "job",
@@ -402,9 +451,28 @@ export const ESCROW_ABI = [
   {
     "inputs": [
       { "internalType": "uint256", "name": "jobId", "type": "uint256" },
+      { "internalType": "string", "name": "imgurLink", "type": "string" }
+    ],
+    "name": "confirmTransfer",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "jobId", "type": "uint256" },
       { "internalType": "bool", "name": "favorFreelancer", "type": "bool" }
     ],
     "name": "resolveDispute",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "newFeePercent", "type": "uint256" }
+    ],
+    "name": "setPlatformFee",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -423,6 +491,34 @@ export const ESCROW_ABI = [
     "inputs": [],
     "name": "usdc",
     "outputs": [{ "internalType": "contract IERC20", "name": "", "type": "address" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "uint256", "name": "jobId", "type": "uint256" }],
+    "name": "getGithubUsername",
+    "outputs": [{ "internalType": "string", "name": "", "type": "string" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "uint256", "name": "jobId", "type": "uint256" }],
+    "name": "getTransferProofLink",
+    "outputs": [{ "internalType": "string", "name": "", "type": "string" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "uint256", "name": "jobId", "type": "uint256" }],
+    "name": "jobGithubUsernames",
+    "outputs": [{ "internalType": "string", "name": "", "type": "string" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "uint256", "name": "jobId", "type": "uint256" }],
+    "name": "transferProofLinks",
+    "outputs": [{ "internalType": "string", "name": "", "type": "string" }],
     "stateMutability": "view",
     "type": "function"
   }

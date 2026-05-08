@@ -13,7 +13,7 @@ export function useApplyForJob() {
   const { writeContractAsync } = useWriteContract();
 
   const applyForJob = useCallback(
-    async (jobId: bigint, proposal: string) => {
+    async (jobId: bigint, proposal: string, estimatedDelivery: string) => {
       try {
         setStatus('pending');
         setError(null);
@@ -22,7 +22,7 @@ export function useApplyForJob() {
         const hash = await writeContractAsync({
           ...ESCROW_CONTRACT,
           functionName: 'applyForJob',
-          args: [jobId, proposal],
+          args: [jobId, proposal, estimatedDelivery],
         });
 
         setTxHash(hash);

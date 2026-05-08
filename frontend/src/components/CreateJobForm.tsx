@@ -15,6 +15,7 @@ export function CreateJobForm() {
   const [description, setDescription] = useState('');
   const [skills, setSkills] = useState('');
   const [githubUsername, setGithubUsername] = useState('');
+  const [deadline, setDeadline] = useState('24'); // Default to 24 hours
   const [errors, setErrors] = useState<{ amount?: string; description?: string; skills?: string }>({});
 
   const { createJob, status, txHash, error } = useCreateJob();
@@ -77,22 +78,14 @@ export function CreateJobForm() {
     const amountInWei = parseUsdc(amount);
     const skillsArray = skills.split(',').map(s => s.trim()).filter(s => s);
     
-    // Store GitHub username in localStorage with a unique key combining client address and description
-    // This ensures each job has its own GitHub username entry
-    if (githubUsername.trim() && address) {
-      const jobData = {
-        description,
-        githubUsername: githubUsername.trim(),
-        clientAddress: address.toLowerCase(),
-        timestamp: Date.now()
-      };
-      // Use a hash of the description + client address for uniqueness
-      const storageKey = `job_github_${address.toLowerCase()}_${description.substring(0, 50)}`;
-      localStorage.setItem(storageKey, JSON.stringify(jobData));
-      console.log('💾 Stored GitHub username for job:', storageKey);
-    }
+    // Calculate deadline timestamp (current time + selected hours)
+    const deadlineHours = parseInt(deadline);
+    const deadlineTimestamp = Math.floor(Date.now() / 1000) + (deadlineHours * 3600);
     
-    await createJob(amountInWei, description, skillsArray);
+    // GitHub username will be passed to contract (stored onchain)
+    const githubUsernameValue = githubUsername.trim() || '';
+    
+    await createJob(amountInWei, description, skillsArray, githubUsernameValue, BigInt(deadlineTimestamp));
   };
 
   const isDisabled = status === 'checking' || status === 'approving' || status === 'waiting-approval' || status === 'pending' || status === 'waiting-creation';
@@ -195,6 +188,30 @@ export function CreateJobForm() {
         />
         <p className="mt-1 text-xs text-gray-500">
           Required for code or app projects. Freelancers will use this to transfer the completed codebase to you after approval.
+        </p>
+      </div>
+
+      {/* Application Deadline */}
+      <div>
+        <label htmlFor="deadline" className="block text-sm font-medium text-gray-300 mb-2">
+          Application Deadline
+        </label>
+        <select
+          id="deadline"
+          value={deadline}
+          onChange={(e) => setDeadline(e.target.value)}
+          disabled={isDisabled}
+          className={`w-full px-4 py-2 bg-black border border-gray-700 rounded-lg focus:ring-2 focus:ring-[#0052FF] focus:border-transparent text-white ${
+            isDisabled ? 'bg-gray-900 cursor-not-allowed' : ''
+          }`}
+        >
+          <option value="24">24 hours</option>
+          <option value="48">48 hours</option>
+          <option value="72">3 days</option>
+          <option value="168">7 days</option>
+        </select>
+        <p className="mt-1 text-xs text-gray-500">
+          Freelancers can apply until this deadline. After the deadline, applications will be closed.
         </p>
       </div>
 
