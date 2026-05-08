@@ -216,7 +216,7 @@ function DisputedJobCard({ jobId }: { jobId: bigint }) {
   const { resolveDispute, status, error } = useResolveDispute();
   const [isResolving, setIsResolving] = useState(false);
 
-  if (!job || job.state !== 4) { // Only show DISPUTED jobs
+  if (!job || job.state !== 5) { // Only show DISPUTED jobs (state 5)
     return null;
   }
 
