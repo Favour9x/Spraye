@@ -59,9 +59,11 @@ export default function ArbitratorPage() {
     );
   }
 
-  // Get all disputed jobs
+  // Get all jobs from current contract and filter for disputed ones
   const disputedJobs: number[] = [];
-  for (let i = 0; i < Number(count || 0); i++) {
+  const totalJobs = Number(count || 0);
+  
+  for (let i = 0; i < totalJobs; i++) {
     disputedJobs.push(i);
   }
 
@@ -72,6 +74,9 @@ export default function ArbitratorPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Arbitrator Dashboard</h1>
           <p className="text-gray-400">Review and resolve disputed jobs</p>
+          <p className="text-gray-500 text-sm mt-2">
+            Contract: {ESCROW_CONTRACT.address} | Total Jobs: {totalJobs}
+          </p>
         </div>
 
         {/* Platform Fee Adjustment (only for platform wallet) */}
@@ -83,9 +88,16 @@ export default function ArbitratorPage() {
 
         {/* Disputed Jobs */}
         <div className="space-y-4">
-          {disputedJobs.map((jobId) => (
-            <DisputedJobCard key={jobId} jobId={BigInt(jobId)} />
-          ))}
+          {disputedJobs.length === 0 ? (
+            <div className="bg-black border border-gray-700 rounded-lg p-8 text-center">
+              <p className="text-gray-400 text-lg">No jobs found on this contract yet.</p>
+              <p className="text-gray-500 text-sm mt-2">Disputed jobs will appear here when raised.</p>
+            </div>
+          ) : (
+            disputedJobs.map((jobId) => (
+              <DisputedJobCard key={jobId} jobId={BigInt(jobId)} />
+            ))
+          )}
         </div>
       </div>
     </div>
