@@ -5,6 +5,7 @@ import { useReadContract } from 'wagmi';
 import { useQueryClient } from '@tanstack/react-query';
 import { ESCROW_CONTRACT } from '@/lib/contracts';
 import { useGithubUsername } from '@/lib/hooks/useGithubUsername';
+import { useConfirmTransfer } from '@/lib/hooks/useConfirmTransfer';
 
 interface FreelancerTransferConfirmationProps {
   jobId: bigint;
@@ -14,9 +15,7 @@ interface FreelancerTransferConfirmationProps {
 }
 
 export function FreelancerTransferConfirmation({ jobId, jobDescription, jobClientAddress, onConfirm }: FreelancerTransferConfirmationProps) {
-  const [transferConfirmed, setTransferConfirmed] = useState(false);
   const [proofLink, setProofLink] = useState('');
-  const [showSuccess, setShowSuccess] = useState(false);
 
   // Get query client for cache invalidation
   const queryClient = useQueryClient();
@@ -24,8 +23,11 @@ export function FreelancerTransferConfirmation({ jobId, jobDescription, jobClien
   // Fetch GitHub username from contract
   const { githubUsername: clientGithubUsername, isLoading: loadingGithub } = useGithubUsername(jobId);
 
+  // Use confirmTransfer hook
+  const { confirmTransfer, status, error, isConfirming, isConfirmed } = useConfirmTransfer();
+
   // Read job state from blockchain with aggressive refetching
-  const { data: job, isError, isLoading, error, refetch } = useReadContract({
+  const { data: job, isError, isLoading, error: jobError, refetch } = useReadContract({
     ...ESCROW_CONTRACT,
     functionName: 'getJob',
     args: [jobId],
@@ -36,6 +38,21 @@ export function FreelancerTransferConfirmation({ jobId, jobDescription, jobClien
       staleTime: 0, // Consider data stale immediately
     }
   });
+
+  // Read transfer proof link from contract
+  const { data: contractProofLink } = useReadContract({
+    ...ESCROW_CONTRACT,
+    functionName: 'transferProofLinks',
+    args: [jobId],
+    query: {
+      refetchInterval: 5000, // Check every 5 seconds
+      refetchOnWindowFocus: true,
+      refetchOnMount: true,
+    }
+  });
+
+  // Check if transfer was confirmed onchain
+  const transferConfirmed = contractProofLink && contractProofLink.trim() !== '';
 
   // Force cache invalidation on component mount to ensure fresh data
   useEffect(() => {
@@ -57,42 +74,22 @@ export function FreelancerTransferConfirmation({ jobId, jobDescription, jobClien
     }
   }, [job?.state, jobId]);
 
-  // Check if transfer was already confirmed in localStorage
-  useEffect(() => {
-    const transferData = localStorage.getItem(`transfer_request_${jobId}`);
-    if (transferData) {
-      try {
-        const data = JSON.parse(transferData);
-        setTransferConfirmed(data.confirmed || false);
-        setProofLink(data.proofLink || '');
-      } catch (e) {
-        console.error('Failed to parse transfer data:', e);
-      }
-    }
-  }, [jobId]);
-
-  const handleConfirmTransfer = () => {
+  // Handle confirm transfer button click
+  const handleConfirmTransfer = async () => {
     if (!proofLink.trim()) return;
 
-    // Update localStorage with confirmation
-    const transferData = {
-      requested: true,
-      confirmed: true,
-      proofLink: proofLink.trim(),
-      confirmedAt: Date.now()
-    };
-    localStorage.setItem(`transfer_request_${jobId}`, JSON.stringify(transferData));
-
-    setTransferConfirmed(true);
-    setShowSuccess(true);
-    
-    // Trigger parent refresh to update UI
-    onConfirm();
+    await confirmTransfer(jobId, proofLink.trim());
   };
 
-  // Check if job state is TRANSFER_REQUESTED (state === 3) OR check localStorage as fallback
-  const transferRequested = (job && job.state === 3) || 
-    (typeof window !== 'undefined' && localStorage.getItem(`transfer_request_${jobId}`)?.includes('"requested":true'));
+  // Trigger parent refresh when transaction is confirmed
+  useEffect(() => {
+    if (isConfirmed) {
+      onConfirm();
+    }
+  }, [isConfirmed, onConfirm]);
+
+  // Check if job state is TRANSFER_REQUESTED (state === 3)
+  const transferRequested = job && job.state === 3;
 
   // Debug logging with error handling
   useEffect(() => {
@@ -100,16 +97,18 @@ export function FreelancerTransferConfirmation({ jobId, jobDescription, jobClien
       jobId: jobId.toString(),
       isLoading,
       isError,
-      error: error?.message,
+      error: jobError?.message,
       jobData: job ? {
         currentState: job.state,
         stateLabel: ['OPEN', 'ASSIGNED', 'SUBMITTED', 'TRANSFER_REQUESTED', 'APPROVED', 'DISPUTED', 'RESOLVED'][job.state],
         transferRequested,
       } : 'No data',
+      contractProofLink: contractProofLink || 'empty',
+      transferConfirmed,
       timestamp: new Date().toLocaleTimeString(),
       cacheStatus: 'Query executed'
     });
-  }, [job, jobId, transferRequested, isLoading, isError, error]);
+  }, [job, jobId, transferRequested, isLoading, isError, jobError, contractProofLink, transferConfirmed]);
 
   // If transfer not requested yet, show waiting message
   if (!transferRequested) {
@@ -155,17 +154,17 @@ export function FreelancerTransferConfirmation({ jobId, jobDescription, jobClien
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            <span className="font-semibold">✓ Transfer confirmed. The client has been notified.</span>
+            <span className="font-semibold">✓ Transfer confirmation sent to client. They will see your proof link shortly.</span>
           </div>
           <div className="p-3 bg-white border border-green-300 rounded-lg">
             <p className="text-sm text-gray-700 mb-1">Your proof link:</p>
             <a 
-              href={proofLink} 
+              href={contractProofLink as string} 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-blue-600 hover:underline text-sm break-all"
             >
-              {proofLink}
+              {contractProofLink}
             </a>
           </div>
           <p className="text-sm text-gray-700">
@@ -254,21 +253,32 @@ export function FreelancerTransferConfirmation({ jobId, jobDescription, jobClien
 
         <button
           onClick={handleConfirmTransfer}
-          disabled={!proofLink.trim()}
+          disabled={!proofLink.trim() || isConfirming}
           className={`w-full px-4 py-2 text-white font-medium rounded-lg transition-colors ${
-            !proofLink.trim() ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#0052FF] hover:bg-[#0046DD]'
+            !proofLink.trim() || isConfirming ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#0052FF] hover:bg-[#0046DD]'
           }`}
         >
-          Confirm Transfer Sent
+          {isConfirming ? 'Confirming Transaction...' : 'Confirm Transfer Sent'}
         </button>
 
-        {showSuccess && (
+        {error && (
+          <div className="p-4 bg-red-50 border-2 border-red-300 rounded-lg">
+            <div className="flex items-center gap-2 text-red-700">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span className="font-medium">Error: {error}</span>
+            </div>
+          </div>
+        )}
+
+        {isConfirmed && (
           <div className="p-4 bg-green-50 border-2 border-green-300 rounded-lg">
             <div className="flex items-center gap-2 text-green-700">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              <span className="font-medium">✓ Transfer confirmed. The client has been notified.</span>
+              <span className="font-medium">✓ Transfer confirmation sent to client. They will see your proof link shortly.</span>
             </div>
           </div>
         )}

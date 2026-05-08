@@ -208,7 +208,7 @@ export function ActionButtons({ jobId, role, state, onSuccess }: ActionButtonsPr
                   {approveStatus === 'pending' && activeAction === 'approve' ? 'Approving...' : 'Approve Work'}
                 </button>
                 <p className="text-xs text-gray-500 mt-1">
-                  Clicking Approve releases payment to the freelancer. A 5% platform fee will be deducted from the freelancer's payment.
+                  Clicking Approve releases payment to the freelancer. Platform fee: 1-5% (adjustable) will be deducted from the freelancer's payment.
                 </p>
               </div>
               

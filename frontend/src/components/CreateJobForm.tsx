@@ -114,8 +114,9 @@ export function CreateJobForm() {
           <p className="mt-1 text-sm text-red-400">{errors.amount}</p>
         )}
         <p className="mt-2 text-xs text-gray-400 bg-blue-900/20 border border-blue-700 rounded p-2">
-          <strong>Note:</strong> A 5% platform fee is deducted from the freelancer payment on job completion. 
-          Example: for a 100 USDC job, the freelancer receives 95 USDC.
+          <strong>Note:</strong> Platform fee: 1-5% (adjustable) is deducted from the freelancer payment on job completion. 
+          The current fee is set by the platform. 
+          Example: for a 100 USDC job with 5% fee, the freelancer receives 95 USDC.
         </p>
       </div>
 

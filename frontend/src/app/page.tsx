@@ -71,7 +71,7 @@ export default function Home() {
                 <div className="text-sm text-gray-400">Secure Escrow</div>
               </div>
               <div className="glass-card p-6 rounded-lg">
-                <div className="text-3xl font-bold text-white mb-2">5%</div>
+                <div className="text-3xl font-bold text-white mb-2">1-5%</div>
                 <div className="text-sm text-gray-400">Platform Fee</div>
               </div>
               <div className="glass-card p-6 rounded-lg">
@@ -275,7 +275,7 @@ export default function Home() {
                 </svg>
               </div>
               <h3 className="text-xl font-bold text-white mb-2">Transparent Pricing</h3>
-              <p className="text-gray-400">5% platform fee — transparent, fair, and built onchain</p>
+              <p className="text-gray-400">Platform fee: 1-5% (adjustable) — transparent, fair, and built onchain</p>
             </motion.div>
           </div>
         </div>
