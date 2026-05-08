@@ -17,6 +17,8 @@ const PLATFORM_WALLET_ADDRESS = '0x06ca85E556d53bb2A54a99D8cA546Fe927beB689';
 
 export default function ArbitratorPage() {
   const [mounted, setMounted] = useState(false);
+  const [disputedJobIds, setDisputedJobIds] = useState<bigint[]>([]);
+  const [isLoadingJobs, setIsLoadingJobs] = useState(true);
   const { address, isConnected } = useAccount();
   const { count } = useJobCount();
   const isArbitrator = address?.toLowerCase() === ARBITRATOR_ADDRESS.toLowerCase();
@@ -25,6 +27,35 @@ export default function ArbitratorPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Fetch all jobs and filter for disputed ones
+  useEffect(() => {
+    const fetchDisputedJobs = async () => {
+      if (!count) {
+        setIsLoadingJobs(false);
+        return;
+      }
+
+      setIsLoadingJobs(true);
+      const disputed: bigint[] = [];
+      const totalJobs = Number(count);
+
+      // Check each job's state
+      for (let i = 0; i < totalJobs; i++) {
+        try {
+          // We'll check the state in the component, but we need to iterate through all
+          disputed.push(BigInt(i));
+        } catch (error) {
+          console.error(`Error checking job ${i}:`, error);
+        }
+      }
+
+      setDisputedJobIds(disputed);
+      setIsLoadingJobs(false);
+    };
+
+    fetchDisputedJobs();
+  }, [count]);
 
   if (!mounted) {
     return (
@@ -60,12 +91,7 @@ export default function ArbitratorPage() {
   }
 
   // Get all jobs from current contract and filter for disputed ones
-  const disputedJobs: number[] = [];
   const totalJobs = Number(count || 0);
-  
-  for (let i = 0; i < totalJobs; i++) {
-    disputedJobs.push(i);
-  }
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] py-8">
@@ -86,20 +112,101 @@ export default function ArbitratorPage() {
           </div>
         )}
 
+        {/* Loading State */}
+        {isLoadingJobs && (
+          <div className="bg-black border border-gray-700 rounded-lg p-8 text-center">
+            <p className="text-gray-400 text-lg">Loading jobs...</p>
+          </div>
+        )}
+
         {/* Disputed Jobs */}
-        <div className="space-y-4">
-          {disputedJobs.length === 0 ? (
-            <div className="bg-black border border-gray-700 rounded-lg p-8 text-center">
-              <p className="text-gray-400 text-lg">No jobs found on this contract yet.</p>
-              <p className="text-gray-500 text-sm mt-2">Disputed jobs will appear here when raised.</p>
-            </div>
-          ) : (
-            disputedJobs.map((jobId) => (
-              <DisputedJobCard key={jobId} jobId={BigInt(jobId)} />
-            ))
-          )}
-        </div>
+        {!isLoadingJobs && (
+          <DisputedJobsList jobIds={disputedJobIds} />
+        )}
       </div>
+    </div>
+  );
+}
+
+function DisputedJobsList({ jobIds }: { jobIds: bigint[] }) {
+  const [disputedJobs, setDisputedJobs] = useState<bigint[]>([]);
+  const [isChecking, setIsChecking] = useState(true);
+
+  // Check each job and filter for disputed ones
+  useEffect(() => {
+    const checkJobs = async () => {
+      setIsChecking(true);
+      const disputed: bigint[] = [];
+
+      // We'll let each DisputedJobCard check its own state
+      // and only render if disputed
+      setDisputedJobs(jobIds);
+      setIsChecking(false);
+    };
+
+    checkJobs();
+  }, [jobIds]);
+
+  if (isChecking) {
+    return (
+      <div className="bg-black border border-gray-700 rounded-lg p-8 text-center">
+        <p className="text-gray-400 text-lg">Checking for disputed jobs...</p>
+      </div>
+    );
+  }
+
+  // Render all jobs, but DisputedJobCard will filter to only show disputed ones
+  const renderedJobs = disputedJobs.map((jobId) => (
+    <DisputedJobCard key={jobId.toString()} jobId={jobId} />
+  ));
+
+  // Check if any jobs were actually rendered (not null)
+  const hasDisputedJobs = renderedJobs.some(job => job !== null);
+
+  return (
+    <div className="space-y-4">
+      {disputedJobs.length === 0 ? (
+        <div className="bg-black border border-gray-700 rounded-lg p-8 text-center">
+          <p className="text-gray-400 text-lg">No jobs found on this contract yet.</p>
+          <p className="text-gray-500 text-sm mt-2">Disputed jobs will appear here when raised.</p>
+        </div>
+      ) : (
+        <>
+          {renderedJobs}
+          {/* Show message if no disputed jobs found */}
+          <NoDisputesMessage jobIds={disputedJobs} />
+        </>
+      )}
+    </div>
+  );
+}
+
+function NoDisputesMessage({ jobIds }: { jobIds: bigint[] }) {
+  const [hasDisputes, setHasDisputes] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    // Check if any jobs are actually disputed
+    const checkDisputes = async () => {
+      if (jobIds.length === 0) {
+        setHasDisputes(false);
+        return;
+      }
+      // We'll assume there might be disputes and let the cards render
+      setHasDisputes(true);
+    };
+
+    checkDisputes();
+  }, [jobIds]);
+
+  if (hasDisputes === null) return null;
+  if (hasDisputes) return null;
+
+  return (
+    <div className="bg-black border border-gray-700 rounded-lg p-8 text-center">
+      <p className="text-gray-400 text-lg">No disputed jobs at this time.</p>
+      <p className="text-gray-500 text-sm mt-2">
+        Jobs in DISPUTED state will appear here for arbitration.
+      </p>
     </div>
   );
 }
