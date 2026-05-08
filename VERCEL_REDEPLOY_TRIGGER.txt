@@ -1,0 +1,3 @@
+Trigger Vercel redeploy with V2 contract address
+Contract: 0xEc6e1172649e4E90CA86eE0CaF6a207970B83133
+Timestamp: 2026-05-08
