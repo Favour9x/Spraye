@@ -1,10 +1,53 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { formatAddress, formatUsdc, jobStateToLabel, STATE_COLORS, type Job } from '@/lib/utils';
 
 interface JobCardProps {
   job: Job;
+}
+
+function DeadlineCountdown({ deadline }: { deadline: bigint }) {
+  const [timeLeft, setTimeLeft] = useState<string>('');
+  const [isExpired, setIsExpired] = useState(false);
+
+  useEffect(() => {
+    const updateCountdown = () => {
+      const now = Math.floor(Date.now() / 1000);
+      const deadlineSeconds = Number(deadline);
+      const diff = deadlineSeconds - now;
+
+      if (diff <= 0) {
+        setIsExpired(true);
+        setTimeLeft('Applications Closed');
+        return;
+      }
+
+      const hours = Math.floor(diff / 3600);
+      const minutes = Math.floor((diff % 3600) / 60);
+
+      if (hours > 24) {
+        const days = Math.floor(hours / 24);
+        setTimeLeft(`${days} day${days > 1 ? 's' : ''}`);
+      } else if (hours > 0) {
+        setTimeLeft(`${hours} hour${hours > 1 ? 's' : ''}`);
+      } else {
+        setTimeLeft(`${minutes} minute${minutes > 1 ? 's' : ''}`);
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [deadline]);
+
+  return (
+    <div className={`text-xs font-medium ${isExpired ? 'text-red-400' : 'text-yellow-400'}`}>
+      {isExpired ? '🔒 Applications Closed' : `⏰ Applications close in: ${timeLeft}`}
+    </div>
+  );
 }
 
 export function JobCard({ job }: JobCardProps) {
@@ -25,6 +68,12 @@ export function JobCard({ job }: JobCardProps) {
         <div>
           <h3 className="text-lg font-semibold text-white">Job #{job.id.toString()}</h3>
           <p className="text-2xl font-bold text-[#0052FF] mt-1">{formatUsdc(job.amount)}</p>
+          {/* Show deadline countdown for OPEN jobs */}
+          {stateLabel === 'OPEN' && job.deadline && (
+            <div className="mt-2">
+              <DeadlineCountdown deadline={job.deadline} />
+            </div>
+          )}
         </div>
         <span className={`px-3 py-1 text-xs font-medium rounded-full border ${stateColor}`}>
           {stateLabel}

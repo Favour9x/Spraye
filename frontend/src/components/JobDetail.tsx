@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useAccount, useReadContract } from 'wagmi';
 import { formatUsdc, jobStateToLabel, STATE_COLORS, type Job } from '@/lib/utils';
 import { ESCROW_CONTRACT } from '@/lib/contracts';
@@ -15,8 +16,64 @@ interface JobDetailProps {
   onRefresh: () => void;
 }
 
+function DeadlineDisplay({ deadline }: { deadline: bigint }) {
+  const [timeLeft, setTimeLeft] = useState<string>('');
+  const [isExpired, setIsExpired] = useState(false);
+
+  useEffect(() => {
+    const updateCountdown = () => {
+      const now = Math.floor(Date.now() / 1000);
+      const deadlineSeconds = Number(deadline);
+      const diff = deadlineSeconds - now;
+
+      if (diff <= 0) {
+        setIsExpired(true);
+        setTimeLeft('Applications Closed');
+        return;
+      }
+
+      const hours = Math.floor(diff / 3600);
+      const minutes = Math.floor((diff % 3600) / 60);
+
+      if (hours > 24) {
+        const days = Math.floor(hours / 24);
+        setTimeLeft(`${days} day${days > 1 ? 's' : ''}`);
+      } else if (hours > 0) {
+        setTimeLeft(`${hours} hour${hours > 1 ? 's' : ''}`);
+      } else {
+        setTimeLeft(`${minutes} minute${minutes > 1 ? 's' : ''}`);
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [deadline]);
+
+  if (isExpired) {
+    return (
+      <div className="p-3 bg-red-50 border-2 border-red-400 rounded-lg">
+        <p className="text-sm font-semibold text-red-700">🔒 Applications Closed</p>
+        <p className="text-xs text-red-600 mt-1">The application deadline has passed</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-3 bg-yellow-50 border-2 border-yellow-400 rounded-lg">
+      <p className="text-sm font-semibold text-yellow-800">⏰ Applications close in: {timeLeft}</p>
+      <p className="text-xs text-yellow-700 mt-1">Apply before the deadline expires</p>
+    </div>
+  );
+}
+
 export function JobDetail({ job, onRefresh }: JobDetailProps) {
   const { address } = useAccount();
+
+  // Check if deadline has passed
+  const now = Math.floor(Date.now() / 1000);
+  const isDeadlineExpired = job.deadline && Number(job.deadline) <= now;
 
   // Get arbitrator address
   const { data: arbitratorAddress } = useReadContract({
@@ -136,11 +193,32 @@ export function JobDetail({ job, onRefresh }: JobDetailProps) {
         </div>
       )}
 
-      {/* Apply for Job Form (Non-client, OPEN state) */}
-      {!isClient && stateLabel === 'OPEN' && address && (
+      {/* Apply for Job Form (Non-client, OPEN state, deadline not expired) */}
+      {!isClient && stateLabel === 'OPEN' && address && !isDeadlineExpired && (
         <div className="bg-white border border-gray-200 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Apply for this Job</h3>
+          {/* Show deadline countdown */}
+          {job.deadline && (
+            <div className="mb-4">
+              <DeadlineDisplay deadline={job.deadline} />
+            </div>
+          )}
           <ApplyForJobForm jobId={job.id} onSuccess={onRefresh} />
+        </div>
+      )}
+
+      {/* Deadline Expired Message (Non-client, OPEN state, deadline expired) */}
+      {!isClient && stateLabel === 'OPEN' && address && isDeadlineExpired && (
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Applications Closed</h3>
+          {job.deadline && (
+            <div className="mb-4">
+              <DeadlineDisplay deadline={job.deadline} />
+            </div>
+          )}
+          <p className="text-sm text-gray-600">
+            The application deadline for this job has passed. You can no longer apply.
+          </p>
         </div>
       )}
 

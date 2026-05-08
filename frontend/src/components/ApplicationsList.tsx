@@ -46,11 +46,22 @@ function ApplicationCard({
   return (
     <div className="border border-gray-800 rounded-lg p-4 hover:border-[#0052FF] transition-colors">
       <div className="flex items-start justify-between mb-2">
-        <div>
+        <div className="flex-1">
           <p className="font-mono text-sm text-white">{freelancer}</p>
           <p className="text-xs text-gray-500 mt-1">
             Applied {timestamp.toLocaleDateString()} at {timestamp.toLocaleTimeString()}
           </p>
+          {/* Show estimated delivery time */}
+          {application.estimatedDelivery && (
+            <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-blue-900/20 border border-blue-500 rounded-lg">
+              <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-sm font-medium text-blue-400">
+                Estimated Delivery: {application.estimatedDelivery}
+              </span>
+            </div>
+          )}
         </div>
         <button
           onClick={handleAssign}

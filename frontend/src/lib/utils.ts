@@ -69,12 +69,14 @@ export interface Job {
   requiredSkills: string[];
   deliverable: string;
   applicationCount: bigint;
+  deadline: bigint;
 }
 
 export interface Application {
   freelancer: `0x${string}`;
   proposal: string;
   timestamp: bigint;
+  estimatedDelivery: string;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

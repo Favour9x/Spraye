@@ -5,6 +5,7 @@ import { useApproveWork } from '@/lib/hooks/useApproveWork';
 import { useRaiseDispute } from '@/lib/hooks/useRaiseDispute';
 import { useResolveDispute } from '@/lib/hooks/useResolveDispute';
 import { useRequestTransfer } from '@/lib/hooks/useRequestTransfer';
+import { useTransferProofLink } from '@/lib/hooks/useTransferProofLink';
 import { TxNotification } from './TxNotification';
 
 interface ActionButtonsProps {
@@ -19,6 +20,7 @@ export function ActionButtons({ jobId, role, state, onSuccess }: ActionButtonsPr
   const { raiseDispute, status: disputeStatus, txHash: disputeTxHash, error: disputeError } = useRaiseDispute();
   const { resolveDispute, status: resolveStatus, txHash: resolveTxHash, error: resolveError } = useResolveDispute();
   const { requestTransfer, status: transferStatus, txHash: transferTxHash, error: transferError } = useRequestTransfer();
+  const { proofLink } = useTransferProofLink(jobId); // Poll every 15 seconds
 
   const [activeAction, setActiveAction] = useState<'approve' | 'dispute' | 'resolve-freelancer' | 'resolve-client' | 'transfer' | null>(null);
   
@@ -129,13 +131,39 @@ export function ActionButtons({ jobId, role, state, onSuccess }: ActionButtonsPr
 
               {/* Transfer Requested Status - Shows when state is TRANSFER_REQUESTED */}
               {state === 'TRANSFER_REQUESTED' && (
-                <div className="ml-7 mt-2 mb-2">
+                <div className="ml-7 mt-2 mb-2 space-y-2">
                   <div className="flex items-center gap-2 text-green-700 bg-green-100 px-3 py-2 rounded-lg">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     <span className="text-sm font-medium">✓ Transfer Requested — waiting for freelancer to confirm</span>
                   </div>
+                  
+                  {/* Show proof link when available */}
+                  {proofLink && proofLink.trim() !== '' && (
+                    <div className="bg-green-50 border-2 border-green-400 rounded-lg p-3">
+                      <div className="flex items-center gap-2 text-green-700 mb-2">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className="text-sm font-semibold">✓ Freelancer has confirmed the repo transfer</span>
+                      </div>
+                      <a
+                        href={proofLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                        View Transfer Proof
+                      </a>
+                      <p className="text-xs text-gray-600 mt-2">
+                        Click to verify the repo is in your GitHub account before approving
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
